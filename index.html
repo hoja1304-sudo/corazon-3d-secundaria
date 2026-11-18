@@ -153,6 +153,7 @@
   #info .desc { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; }
   #info .fact { margin: 6px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
   #info .fact b { color: var(--text); }
+  #i-more { display: none; margin-left: auto; padding: 4px 10px; border-radius: 999px; background: var(--chip); color: var(--text); font-size: 11.5px; font-weight: 700; }
   #views { position: absolute; bottom: 12px; right: 354px; z-index: 19; display: flex; gap: 2px; padding: 4px; }
   #views .btn { padding: 6px 9px; }
   body.panel-hidden #views { right: 12px; }
@@ -166,7 +167,13 @@
 
   @media (max-width: 860px) {
     #views { right: 12px; bottom: auto; top: 118px; flex-direction: column; }
-    #info { bottom: 12px; width: calc(100vw - 24px); }
+    #info { bottom: 10px; left: 10px; width: calc(100vw - 20px); max-width: none; padding: 9px 12px; }
+    #info h2 { font-size: 14px; }
+    #info .desc { font-size: 12px; line-height: 1.4; margin-top: 4px; }
+    #i-more { display: inline-flex; }
+    #info:not(.open) .fact { display: none; }
+    #info:not(.open) .desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #info.open { max-height: 55vh; overflow-y: auto; }
     #panel { top: 64px; bottom: 150px; }
     .brand p { display: none; }
     .btn span { display: none; }
@@ -276,7 +283,7 @@
   </aside>
 
   <section id="info" class="glass">
-    <div class="h"><h2 id="i-title">Corazón humano</h2><span class="badge" id="i-group">Órgano muscular</span><span class="badge" id="i-o2" style="display:none"></span></div>
+    <div class="h"><h2 id="i-title">Corazón humano</h2><span class="badge" id="i-group">Órgano muscular</span><span class="badge" id="i-o2" style="display:none"></span><button id="i-more" type="button" aria-expanded="false">Ver más</button></div>
     <p class="desc" id="i-desc">Órgano muscular hueco, del tamaño de un puño, que bombea la sangre por todo el cuerpo. Haz clic en una parte o en su etiqueta para conocerla.</p>
     <p class="fact" id="i-fact"><b>Ojo con la orientación:</b> en la vista de frente, el lado <b>izquierdo</b> del corazón aparece a <b>tu derecha</b>, como cuando miras a una persona de frente.</p>
   </section>
@@ -2039,12 +2046,27 @@ function showToast(m) {
   const t = document.getElementById('toast'); t.textContent = m; t.style.display = 'block';
   clearTimeout(showToast.h); showToast.h = setTimeout(() => t.style.display = 'none', 2600);
 }
+(function () {
+  const info = document.getElementById('info'), more = document.getElementById('i-more');
+  more.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = info.classList.toggle('open');
+    more.textContent = open ? 'Ver menos' : 'Ver más';
+    more.setAttribute('aria-expanded', open);
+  });
+  let lastH = 0;
+  if (window.ResizeObserver) new ResizeObserver(() => { if (window.innerWidth < 860 && info.offsetHeight !== lastH) { lastH = info.offsetHeight; resize(); } }).observe(info);
+})();
 function resize() {
   const W = window.innerWidth, Hh = window.innerHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
   // desplaza el centro de la vista para que el panel derecho no tape el corazón
   const P = (document.getElementById('panel').classList.contains('hide') || W < 860) ? 0 : 330;
-  camera.aspect = (W + P) / Hh;
-  if (P) camera.setViewOffset(W + P, Hh, P, 0, W, Hh); else camera.clearViewOffset();
+  // en pantallas angostas sube el corazón para que la tarjeta de abajo no lo tape
+  const B = W < 860 ? Math.min(document.getElementById('info').offsetHeight + 16, Hh * 0.45) : 0;
+  camera.aspect = (W + P) / (Hh + B);
+  // en pantallas verticales (celular) aleja la vista para que el corazón quepa a lo ancho
+  camera.zoom = Math.min(1, (W / (Hh + B)) / 0.72);
+  if (P || B) camera.setViewOffset(W + P, Hh + B, P, 0, W, Hh); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   renderer.setSize(W, Hh);
   [lblCanvas, pen].forEach(c => { c.width = W * dpr; c.height = Hh * dpr; c.style.width = W + 'px'; c.style.height = Hh + 'px'; });
