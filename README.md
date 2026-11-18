@@ -2,6 +2,8 @@
 
 Visor 3D interactivo del corazón humano para Ciencias y Biología de secundaria.
 
+*Elaborado por **Alberto Jiménez Ruiz**.*
+
 **Abrir en línea:** https://hoja1304-sudo.github.io/corazon-3d-secundaria/
 
 - Modelo realista con latido: cavidades, tabique, válvulas, cuerdas tendinosas, músculos papilares, grandes vasos, coronarias y pericardio.

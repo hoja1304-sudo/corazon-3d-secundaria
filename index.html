@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
+<meta name="author" content="Alberto Jiménez Ruiz" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Corazón Humano 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -67,6 +68,16 @@
   .logo { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #ef5350, #8e1b2f); display: grid; place-items: center; }
   .brand h1 { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.15; }
   .brand p { margin: 0; font-size: 11px; color: var(--muted); }
+  .brand p.by { font-size: 10.5px; margin-top: 1px; letter-spacing: .01em; }
+  .brand p.by b { color: var(--text); font-weight: 600; font-family: Georgia, 'Times New Roman', serif; font-style: italic; letter-spacing: .02em; }
+  .credit { margin-top: 22px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .12); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  body.light .credit { border-top-color: rgba(0, 0, 0, .1); }
+  .credit-k { font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+  .credit-n { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 19px; letter-spacing: .02em; color: var(--text); }
+  .credit-n::before, .credit-n::after { content: ''; display: inline-block; width: 18px; height: 1px; background: var(--accent); vertical-align: middle; margin: 0 10px; opacity: .8; }
+  #splash-credit { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 40; padding: 16px 26px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; opacity: 0; transition: opacity .9s ease, transform .9s ease; white-space: nowrap; }
+  #splash-credit.show { opacity: 1; transform: translate(-50%, -54%); }
+  body.clean #splash-credit { display: none; }
   .actions { display: flex; gap: 4px; padding: 5px; flex-wrap: wrap; justify-content: flex-end; }
   .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--muted); transition: background .15s, color .15s; }
   .btn:hover { background: var(--chip-hover); color: var(--text); }
@@ -178,6 +189,8 @@
     #info.open { max-height: 55vh; overflow-y: auto; }
     #panel { top: 64px; bottom: 150px; }
     .brand p { display: none; }
+    #splash-credit .credit-n { font-size: 17px; }
+    #splash-credit .credit-n::before, #splash-credit .credit-n::after { width: 12px; margin: 0 7px; }
     .btn span { display: none; }
     #phase { top: 64px; }
   }
@@ -193,7 +206,7 @@
   <header id="top">
     <div class="glass brand">
       <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 21s-7.5-4.6-9.6-9.3C1 8.4 3 5 6.4 5c2 0 3.6 1.1 4.6 2.6.4.6 1.6.6 2 0C14 6.1 15.6 5 17.6 5 21 5 23 8.4 21.6 11.7 19.5 16.4 12 21 12 21z"/></svg></div>
-      <div><h1>Corazón humano 3D</h1><p>Ciencias · Secundaria</p></div>
+      <div><h1>Corazón humano 3D</h1><p>Ciencias · Secundaria</p><p class="by">Elaborado por <b>Alberto Jiménez Ruiz</b></p></div>
     </div>
     <div class="glass actions">
       <button class="btn on" id="b-beat" title="Latido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg><span>Latido</span></button>
@@ -300,6 +313,7 @@
     <button class="btn" data-view="top">Arriba</button>
   </div>
 
+  <div id="splash-credit" class="glass" aria-hidden="true"><span class="credit-k">Elaborado por</span><span class="credit-n">Alberto Jiménez Ruiz</span></div>
   <div id="toast" class="glass"></div>
 
   <div id="loading">
@@ -307,6 +321,7 @@
       <h3>Construyendo el corazón…</h3>
       <p id="load-msg">Modelando cavidades, válvulas y vasos sanguíneos</p>
       <div class="bar"><i id="load-bar"></i></div>
+      <div class="credit"><span class="credit-k">Elaborado por</span><span class="credit-n">Alberto Jiménez Ruiz</span></div>
     </div>
   </div>
 </div>
@@ -2207,6 +2222,10 @@ buildHeart().then(() => {
   renderQuizIntro();
   setTool('orbit');
   document.getElementById('loading').style.display = 'none';
+  { const sc = document.getElementById('splash-credit');
+    requestAnimationFrame(() => sc.classList.add('show'));
+    setTimeout(() => sc.classList.remove('show'), 3800);
+    setTimeout(() => sc.style.display = 'none', 4800); }
   if (window.innerWidth < 860) { document.getElementById('panel').classList.add('hide'); document.body.classList.add('panel-hidden'); }
   resize();
   window.__dbg = { camera, controls, state, view, setCut, flyTo, TARGET, heart, G };
