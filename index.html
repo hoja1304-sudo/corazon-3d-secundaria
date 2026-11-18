@@ -2069,10 +2069,25 @@ function paintVoiceBtn() {
   b.querySelector('.w').style.display = VOICE.on ? '' : 'none';
   b.querySelector('.x').style.display = VOICE.on ? 'none' : '';
 }
+// Convierte números, rangos, unidades y ordinales a palabras para que la voz no los lea como fechas
+function speechNormalize(t) {
+  const UNIT = { mm: 'milímetros', cm: 'centímetros', ml: 'mililitros', mL: 'mililitros', L: 'litros', kg: 'kilogramos', g: 'gramos', '%': 'por ciento' };
+  const ORD_F = ['', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta', 'séptima', 'octava', 'novena', 'décima'];
+  const ORD_M = ['', 'primer', 'segundo', 'tercer', 'cuarto', 'quinto', 'sexto', 'séptimo', 'octavo', 'noveno', 'décimo'];
+  return t
+    .replace(/CO₂/g, 'dióxido de carbono').replace(/O₂/g, 'oxígeno')
+    .replace(/(\d+(?:[.,]\d+)?)\s*[–—-]\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|mL|ml|L|kg|g|%)?(?![\w])/g,
+      (m, x, y, u) => x + ' a ' + y + (u ? ' ' + UNIT[u] : ''))
+    .replace(/(\d+(?:[.,]\d+)?)\s*(mm|cm|mL|ml|L|kg|g)(?![\w])/g, (m, x, u) => x + ' ' + UNIT[u])
+    .replace(/(\d+)\s*%/g, '$1 por ciento')
+    .replace(/\b(\d{1,2})\.?\s?ª/g, (m, n) => ORD_F[+n] || m)
+    .replace(/\b(\d{1,2})\.?\s?º/g, (m, n) => ORD_M[+n] || m)
+    .replace(/\s+/g, ' ').trim();
+}
 function speakText(txt) {
   if (!VOICE.on || !('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(txt.replace(/O₂/g, 'oxígeno').replace(/\s+/g, ' ').trim());
+  const u = new SpeechSynthesisUtterance(speechNormalize(txt));
   u.lang = VOICE.voice ? VOICE.voice.lang : 'es-ES';
   if (VOICE.voice) u.voice = VOICE.voice;
   u.rate = 0.95;
