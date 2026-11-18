@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Corazón Humano 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+  :root {
+    --bg: #0a0f1c;
+    --bg-grad: radial-gradient(circle at 50% 38%, #1c2538 0%, #070b14 75%);
+    --panel: rgba(13, 19, 33, 0.9);
+    --line: rgba(148, 163, 184, 0.18);
+    --text: #eef2f7;
+    --muted: #94a3b8;
+    --chip: rgba(148, 163, 184, 0.12);
+    --chip-hover: rgba(148, 163, 184, 0.22);
+    --red: #ef5350;
+    --blue: #4f8cff;
+    --accent: #f0645a;
+    --ok: #34d399;
+    --bad: #f87171;
+  }
+  body.light {
+    --bg: #eef1f5;
+    --bg-grad: radial-gradient(circle at 50% 38%, #ffffff 0%, #d5dce6 80%);
+    --panel: rgba(255, 255, 255, 0.93);
+    --line: rgba(15, 23, 42, 0.12);
+    --text: #142033;
+    --muted: #55657c;
+    --chip: rgba(15, 23, 42, 0.06);
+    --chip-hover: rgba(15, 23, 42, 0.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif; -webkit-tap-highlight-color: transparent; }
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 0; background: none; }
+  #app { position: fixed; inset: 0; background: var(--bg-grad); }
+  #gl { position: absolute; inset: 0; }
+  #gl canvas { display: block; outline: none; }
+  #lbl-canvas, #pen-canvas { position: absolute; inset: 0; pointer-events: none; }
+  #pen-canvas { z-index: 6; }
+  #pen-canvas.on { pointer-events: auto; cursor: crosshair; }
+  #labels { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+  .lbl { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; font-size: 11.5px; font-weight: 600;
+    padding: 3px 8px; border-radius: 999px; background: rgba(8, 12, 22, 0.78); color: #fff; border: 1px solid rgba(255,255,255,.18);
+    pointer-events: auto; cursor: pointer; transition: opacity .2s; box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+  body.light .lbl { background: rgba(255,255,255,.92); color: #142033; border-color: rgba(15,23,42,.15); }
+  .lbl .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+  .lbl.orient { background: transparent !important; border: 0; box-shadow: none; color: var(--muted); font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; font-size: 10.5px; pointer-events: none; }
+  .lbl.dim { opacity: .28; }
+  .pin { position: absolute; transform: translate(-50%, -100%); z-index: 7; pointer-events: auto; }
+  .pin b { display: block; background: #f43f5e; color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(255,255,255,.7); }
+  .pin i { display: block; width: 2px; height: 9px; background: #f43f5e; margin: 0 auto; }
+
+  .glass { background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  #top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; justify-content: space-between; align-items: center; z-index: 20; pointer-events: none; }
+  #top > * { pointer-events: auto; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #ef5350, #8e1b2f); display: grid; place-items: center; }
+  .brand h1 { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.15; }
+  .brand p { margin: 0; font-size: 11px; color: var(--muted); }
+  .actions { display: flex; gap: 4px; padding: 5px; flex-wrap: wrap; justify-content: flex-end; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--muted); transition: background .15s, color .15s; }
+  .btn:hover { background: var(--chip-hover); color: var(--text); }
+  .btn.on { background: var(--accent); color: #fff; }
+  .btn svg { width: 16px; height: 16px; flex: none; }
+  #phase { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 15; padding: 6px 14px; font-size: 12px; font-weight: 600; display: flex; gap: 8px; align-items: center; border-radius: 999px; }
+  #phase .beat { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+
+  #tools { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 20; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .tool { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: var(--muted); transition: background .15s, color .15s; }
+  .tool:hover { background: var(--chip-hover); color: var(--text); }
+  .tool.on { background: var(--accent); color: #fff; }
+  .tool svg { width: 20px; height: 20px; }
+  #subpanel { position: absolute; left: 68px; top: 50%; transform: translateY(-50%); z-index: 20; width: 250px; padding: 14px; display: none; }
+  #subpanel h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  #subpanel p { margin: 0 0 10px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .chipbtn { padding: 7px 8px; border-radius: 10px; background: var(--chip); font-size: 12px; font-weight: 600; text-align: center; transition: background .15s; }
+  .chipbtn:hover { background: var(--chip-hover); }
+  .chipbtn.on { background: var(--accent); color: #fff; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; margin-top: 10px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .swatches { display: flex; gap: 6px; }
+  .sw { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; }
+  .sw.on { border-color: var(--text); }
+
+  #panel { position: absolute; top: 72px; right: 12px; bottom: 12px; width: 330px; max-width: calc(100vw - 24px); z-index: 20; display: flex; flex-direction: column; overflow: hidden; transition: transform .25s; }
+  #panel.hide { transform: translateX(calc(100% + 24px)); }
+  .pane-head { padding: 12px 12px 10px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--chip); border-radius: 11px; padding: 3px; gap: 3px; }
+  .seg button { padding: 6px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .seg button.on { background: var(--bg2, rgba(255,255,255,.1)); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+  body:not(.light) .seg button.on { background: rgba(255,255,255,.12); }
+  body.light .seg button.on { background: #fff; }
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 12px; }
+  .toggles label { display: flex; align-items: center; gap: 7px; cursor: pointer; color: var(--text); }
+  .toggles input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .mini { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+  .tabs button { padding: 10px 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+  .tabbody { flex: 1; overflow-y: auto; padding: 10px; }
+  .tabbody::-webkit-scrollbar { width: 6px; } .tabbody::-webkit-scrollbar-thumb { background: var(--chip-hover); border-radius: 9px; }
+  .group-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin: 10px 4px 6px; font-weight: 700; }
+  .group-title:first-child { margin-top: 2px; }
+  .part { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 8px; border-radius: 11px; border: 1px solid transparent; transition: background .15s; }
+  .part:hover { background: var(--chip); }
+  .part.sel { border-color: var(--accent); background: var(--chip); }
+  .part .nm { flex: 1; min-width: 0; text-align: left; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .part .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .part.off .nm span { opacity: .4; text-decoration: line-through; }
+  .part .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(255,255,255,.08); }
+  .ib { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); font-size: 11px; font-weight: 700; }
+  .ib:hover { background: var(--chip-hover); color: var(--text); }
+  .ib.on { background: var(--accent); color: #fff; }
+  .ib svg { width: 15px; height: 15px; }
+  .step { display: flex; gap: 10px; padding: 8px; border-radius: 12px; text-align: left; width: 100%; transition: background .15s; align-items: flex-start; }
+  .step:hover { background: var(--chip); }
+  .step.on { background: var(--chip-hover); }
+  .step .n { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; color: #fff; }
+  .step .t { font-size: 12.5px; font-weight: 600; }
+  .step .d { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .lungs { margin: 6px 4px; padding: 8px 10px; border-radius: 10px; background: var(--chip); font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+  .navrow { display: flex; gap: 6px; margin: 8px 0 4px; }
+  .navrow .chipbtn { flex: 1; }
+  .quiz-q { font-size: 14px; font-weight: 600; line-height: 1.4; margin: 6px 2px 12px; }
+  .opt { display: block; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 7px; border-radius: 11px; background: var(--chip); font-size: 13px; font-weight: 500; border: 1px solid transparent; }
+  .opt:hover { background: var(--chip-hover); }
+  .opt.ok { border-color: var(--ok); background: rgba(52, 211, 153, .15); }
+  .opt.bad { border-color: var(--bad); background: rgba(248, 113, 113, .15); }
+  .quiz-fb { font-size: 12px; line-height: 1.45; color: var(--muted); min-height: 18px; margin: 4px 2px 10px; }
+  .score { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin: 0 2px; }
+  .bar { height: 5px; background: var(--chip); border-radius: 9px; overflow: hidden; margin: 6px 2px 4px; }
+  .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+  .primary { display: block; width: 100%; padding: 10px; border-radius: 11px; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; }
+
+  #info { position: absolute; left: 12px; bottom: 12px; z-index: 20; width: 420px; max-width: calc(100vw - 24px); padding: 12px 14px; }
+  #info .h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #info h2 { margin: 0; font-size: 15px; font-weight: 700; }
+  .badge { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+  .badge.o2r { background: rgba(239, 83, 80, .16); color: #ff8a80; }
+  .badge.o2b { background: rgba(79, 140, 255, .16); color: #8fb4ff; }
+  body.light .badge.o2r { color: #c62828; } body.light .badge.o2b { color: #1d4ed8; }
+  #info .desc { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; }
+  #info .fact { margin: 6px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+  #info .fact b { color: var(--text); }
+  #views { position: absolute; bottom: 12px; right: 354px; z-index: 19; display: flex; gap: 2px; padding: 4px; }
+  #views .btn { padding: 6px 9px; }
+  body.panel-hidden #views { right: 12px; }
+
+  #loading { position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--bg-grad); }
+  #loading .box { width: 300px; text-align: center; }
+  #loading h3 { margin: 0 0 6px; font-size: 15px; }
+  #loading p { margin: 0 0 14px; font-size: 12px; color: var(--muted); }
+  #loading .bar { height: 6px; }
+  #toast { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); z-index: 60; padding: 8px 14px; font-size: 12.5px; font-weight: 600; display: none; border-radius: 12px; }
+
+  @media (max-width: 860px) {
+    #views { right: 12px; bottom: auto; top: 118px; flex-direction: column; }
+    #info { bottom: 12px; width: calc(100vw - 24px); }
+    #panel { top: 64px; bottom: 150px; }
+    .brand p { display: none; }
+    .btn span { display: none; }
+    #phase { top: 64px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="gl"></div>
+  <canvas id="lbl-canvas"></canvas>
+  <div id="labels"></div>
+  <canvas id="pen-canvas"></canvas>
+
+  <header id="top">
+    <div class="glass brand">
+      <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 21s-7.5-4.6-9.6-9.3C1 8.4 3 5 6.4 5c2 0 3.6 1.1 4.6 2.6.4.6 1.6.6 2 0C14 6.1 15.6 5 17.6 5 21 5 23 8.4 21.6 11.7 19.5 16.4 12 21 12 21z"/></svg></div>
+      <div><h1>Corazón humano 3D</h1><p>Ciencias · Secundaria</p></div>
+    </div>
+    <div class="glass actions">
+      <button class="btn on" id="b-beat" title="Latido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg><span>Latido</span></button>
+      <button class="btn" id="b-slow" title="Velocidad del latido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg><span id="slow-txt">Normal</span></button>
+      <button class="btn" id="b-rot" title="Girar solo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h5M20 20v-5h-5M5.5 15a7.5 7.5 0 0 0 13 2M18.5 9a7.5 7.5 0 0 0-13-2"/></svg><span>Girar</span></button>
+      <button class="btn" id="b-reset" title="Centrar (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg><span>Centrar</span></button>
+      <button class="btn" id="b-theme" title="Modo claro/oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 15A8 8 0 1 1 9 4a6.5 6.5 0 0 0 11 11z"/></svg></button>
+      <button class="btn" id="b-panel" title="Mostrar/ocultar panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg><span>Panel</span></button>
+    </div>
+  </header>
+
+  <div id="phase" class="glass"><span class="beat" id="phase-dot"></span><span id="phase-txt">Diástole</span></div>
+
+  <aside id="tools" class="glass">
+    <button class="tool on" data-tool="orbit" title="Explorar y seleccionar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M5 3l14 7-6 2-2 6z"/></svg></button>
+    <button class="tool" data-tool="cut" title="Corte (ver el interior)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg></button>
+    <button class="tool" data-tool="pen" title="Lápiz para anotar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M16.9 3.6l3.5 3.5L8 19.5H4.5V16z"/></svg></button>
+    <button class="tool" data-tool="pin" title="Marcadores numerados"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 21s-6-5.4-6-11a6 6 0 0 1 12 0c0 5.6-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg></button>
+  </aside>
+
+  <div id="subpanel" class="glass">
+    <div id="sp-cut">
+      <h3>Corte anatómico</h3>
+      <p>Elige un plano para abrir el corazón y ver sus cavidades, el tabique y las válvulas.</p>
+      <div class="grid2" id="cut-presets">
+        <button class="chipbtn" data-cut="4c">4 cámaras</button>
+        <button class="chipbtn" data-cut="coronal">Frontal</button>
+        <button class="chipbtn" data-cut="sagital">Lateral</button>
+        <button class="chipbtn" data-cut="axial">Transversal</button>
+      </div>
+      <div class="row"><span>Profundidad del corte</span><span id="cut-val">0.00</span></div>
+      <input type="range" id="cut-slider" min="-1.2" max="1.2" step="0.02" value="0" />
+      <div class="grid2" style="margin-top:10px">
+        <button class="chipbtn" id="cut-flip">Invertir lado</button>
+        <button class="chipbtn" id="cut-off">Quitar corte</button>
+      </div>
+    </div>
+    <div id="sp-pen">
+      <h3>Lápiz</h3>
+      <p>Dibuja sobre la pantalla para señalar o explicar.</p>
+      <div class="row" style="margin-top:0"><span>Color</span>
+        <div class="swatches" id="pen-colors">
+          <button class="sw on" data-c="#facc15" style="background:#facc15"></button>
+          <button class="sw" data-c="#38bdf8" style="background:#38bdf8"></button>
+          <button class="sw" data-c="#4ade80" style="background:#4ade80"></button>
+          <button class="sw" data-c="#f472b6" style="background:#f472b6"></button>
+          <button class="sw" data-c="#ffffff" style="background:#ffffff"></button>
+        </div>
+      </div>
+      <div class="row"><span>Grosor</span><span id="pen-size-val">4 px</span></div>
+      <input type="range" id="pen-size" min="1" max="12" value="4" />
+      <div class="grid2" style="margin-top:10px">
+        <button class="chipbtn" id="pen-undo">Deshacer</button>
+        <button class="chipbtn" id="pen-clear">Borrar todo</button>
+      </div>
+    </div>
+    <div id="sp-pin">
+      <h3>Marcadores</h3>
+      <p>Haz clic sobre una estructura para colocar un marcador numerado con su nombre.</p>
+      <button class="chipbtn" id="pin-clear" style="width:100%">Borrar marcadores</button>
+    </div>
+  </div>
+
+  <aside id="panel" class="glass">
+    <div class="pane-head">
+      <div class="seg" id="color-mode">
+        <button data-mode="real" class="on">Realista</button>
+        <button data-mode="did">Didáctico (O₂)</button>
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="t-labels" checked /> Etiquetas</label>
+        <label><input type="checkbox" id="t-xray" /> Transparente</label>
+        <label><input type="checkbox" id="t-flow" /> Flujo de sangre</label>
+        <label><input type="checkbox" id="t-peri" /> Pericardio</label>
+      </div>
+      <div>
+        <div class="mini"><span>Separar partes</span><span id="ex-val">0%</span></div>
+        <input type="range" id="ex-slider" min="0" max="1" step="0.02" value="0" />
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="parts" class="on">Partes</button>
+      <button data-tab="route">Recorrido</button>
+      <button data-tab="quiz">Practicar</button>
+    </nav>
+    <div class="tabbody" id="tab-parts"></div>
+    <div class="tabbody" id="tab-route" style="display:none"></div>
+    <div class="tabbody" id="tab-quiz" style="display:none"></div>
+  </aside>
+
+  <section id="info" class="glass">
+    <div class="h"><h2 id="i-title">Corazón humano</h2><span class="badge" id="i-group">Órgano muscular</span><span class="badge" id="i-o2" style="display:none"></span></div>
+    <p class="desc" id="i-desc">Órgano muscular hueco, del tamaño de un puño, que bombea la sangre por todo el cuerpo. Haz clic en una parte o en su etiqueta para conocerla.</p>
+    <p class="fact" id="i-fact"><b>Ojo con la orientación:</b> en la vista de frente, el lado <b>izquierdo</b> del corazón aparece a <b>tu derecha</b>, como cuando miras a una persona de frente.</p>
+  </section>
+
+  <div id="views" class="glass">
+    <button class="btn" data-view="front">Frente</button>
+    <button class="btn" data-view="back">Atrás</button>
+    <button class="btn" data-view="left">Izq.</button>
+    <button class="btn" data-view="right">Der.</button>
+    <button class="btn" data-view="top">Arriba</button>
+  </div>
+
+  <div id="toast" class="glass"></div>
+
+  <div id="loading">
+    <div class="box">
+      <h3>Construyendo el corazón…</h3>
+      <p id="load-msg">Modelando cavidades, válvulas y vasos sanguíneos</p>
+      <div class="bar"><i id="load-bar"></i></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* =========================================================
+   1. CONTENIDO EDUCATIVO
+   ========================================================= */
+const PARTS = [
+  { id: 'ra', name: 'Aurícula derecha', group: 'Cavidades', o2: 'b', real: 0x6e2531, did: 0x4f7fe0,
+    desc: 'Cavidad superior derecha. Recibe la sangre pobre en oxígeno que regresa del cuerpo por las venas cavas superior e inferior, y la pasa al ventrículo derecho a través de la válvula tricúspide.',
+    fact: 'En su pared está el <b>nódulo sinusal</b>, el “marcapasos natural” que inicia cada latido.' },
+  { id: 'rv', name: 'Ventrículo derecho', group: 'Cavidades', o2: 'b', real: 0x7d2a26, did: 0x3a68d0,
+    desc: 'Cavidad inferior derecha. Bombea la sangre pobre en oxígeno hacia los pulmones por la arteria pulmonar (circulación menor o pulmonar).',
+    fact: 'Forma la mayor parte de la <b>cara frontal</b> del corazón. Su pared es más delgada que la del izquierdo porque solo envía sangre a los pulmones, que están muy cerca.' },
+  { id: 'la', name: 'Aurícula izquierda', group: 'Cavidades', o2: 'r', real: 0x6e2531, did: 0xe0504c,
+    desc: 'Cavidad superior izquierda. Recibe la sangre rica en oxígeno que llega de los pulmones por las cuatro venas pulmonares, y la pasa al ventrículo izquierdo a través de la válvula mitral.',
+    fact: 'Es la cavidad más <b>posterior</b> (hacia la espalda). Gira el modelo con “Atrás” para verla completa.' },
+  { id: 'lv', name: 'Ventrículo izquierdo', group: 'Cavidades', o2: 'r', real: 0x7d2a26, did: 0xc9303b,
+    desc: 'Cavidad inferior izquierda, la de pared más gruesa. Bombea la sangre rica en oxígeno a todo el cuerpo a través de la aorta (circulación mayor o sistémica).',
+    fact: 'Su pared mide unos 10–15 mm, casi <b>3 veces</b> la del ventrículo derecho. Su punta forma el <b>ápice</b>, que se siente latir entre la 5.ª y 6.ª costilla izquierda.' },
+  { id: 'septum', name: 'Tabique (septo)', group: 'Cavidades', o2: '', real: 0x7d2a26, did: 0x9b6bd6,
+    desc: 'Pared muscular que separa el lado derecho del izquierdo (tabique interauricular e interventricular). Impide que se mezcle la sangre rica en oxígeno con la pobre en oxígeno.',
+    fact: 'Antes de nacer hay un orificio en el tabique interauricular (<b>foramen oval</b>) que normalmente se cierra después del nacimiento. Usa el <b>corte</b> para verlo.' },
+  { id: 'tricuspid', name: 'Válvula tricúspide', group: 'Válvulas', o2: 'b', real: 0xeee2cc, did: 0xf2e6c8, internal: true,
+    desc: 'Válvula de tres valvas entre la aurícula derecha y el ventrículo derecho. Se cierra cuando el ventrículo se contrae para que la sangre no regrese a la aurícula.',
+    fact: 'Su cierre, junto con el de la mitral, produce el primer ruido del latido: <b>“lub”</b>.' },
+  { id: 'pulmonary', name: 'Válvula pulmonar', group: 'Válvulas', o2: 'b', real: 0xeee2cc, did: 0xf2e6c8, internal: true,
+    desc: 'Válvula semilunar (tres valvas en forma de media luna) entre el ventrículo derecho y la arteria pulmonar. Evita que la sangre regrese al ventrículo.',
+    fact: 'Las válvulas semilunares se cierran al terminar la contracción y producen el segundo ruido: <b>“dub”</b>.' },
+  { id: 'mitral', name: 'Válvula mitral (bicúspide)', group: 'Válvulas', o2: 'r', real: 0xeee2cc, did: 0xf2e6c8, internal: true,
+    desc: 'Válvula de dos valvas entre la aurícula izquierda y el ventrículo izquierdo. Impide que la sangre retroceda hacia la aurícula.',
+    fact: 'Se llama “mitral” porque sus dos valvas recuerdan la <b>mitra</b> (gorro) de un obispo.' },
+  { id: 'aortic', name: 'Válvula aórtica', group: 'Válvulas', o2: 'r', real: 0xeee2cc, did: 0xf2e6c8, internal: true,
+    desc: 'Válvula semilunar entre el ventrículo izquierdo y la arteria aorta. Se abre para que salga la sangre hacia el cuerpo y se cierra para que no regrese.',
+    fact: 'Justo encima de ella nacen las <b>arterias coronarias</b>, que alimentan al propio corazón.' },
+  { id: 'papillary', name: 'Cuerdas tendinosas y músculos papilares', group: 'Válvulas', o2: '', real: 0xe9dcc4, did: 0xf2d16b, internal: true,
+    desc: 'Las cuerdas tendinosas son como las cuerdas de un paracaídas: unen las valvas de la tricúspide y la mitral con los músculos papilares para que no se volteen hacia las aurículas.',
+    fact: 'Los músculos papilares se contraen junto con el ventrículo y tensan las cuerdas en el momento justo.' },
+  { id: 'svc', name: 'Vena cava superior', group: 'Vasos sanguíneos', o2: 'b', real: 0x5f4767, did: 0x5b8ef0,
+    desc: 'Vena que trae al corazón la sangre pobre en oxígeno de la cabeza, el cuello y los brazos. Desemboca en la aurícula derecha.',
+    fact: 'Las venas no tienen pared tan elástica como las arterias: la presión de la sangre en ellas es mucho menor.' },
+  { id: 'ivc', name: 'Vena cava inferior', group: 'Vasos sanguíneos', o2: 'b', real: 0x5f4767, did: 0x5b8ef0,
+    desc: 'Vena que trae la sangre pobre en oxígeno del abdomen y las piernas hasta la aurícula derecha.',
+    fact: 'Es la <b>vena más grande</b> del cuerpo humano.' },
+  { id: 'pt', name: 'Arteria pulmonar', group: 'Vasos sanguíneos', o2: 'b', real: 0xd2a092, did: 0x2f5bd3,
+    desc: 'Sale del ventrículo derecho (tronco pulmonar) y se divide en dos ramas, derecha e izquierda, que llevan la sangre pobre en oxígeno a los pulmones.',
+    fact: 'Es la única arteria del adulto que transporta <b>sangre pobre en oxígeno</b>. Recuerda: arteria = sale del corazón.' },
+  { id: 'pv', name: 'Venas pulmonares', group: 'Vasos sanguíneos', o2: 'r', real: 0x7a4a62, did: 0xf06a60,
+    desc: 'Cuatro venas (dos de cada pulmón) que traen la sangre rica en oxígeno desde los pulmones hasta la aurícula izquierda.',
+    fact: 'Son las únicas venas que transportan <b>sangre rica en oxígeno</b>. Recuerda: vena = llega al corazón.' },
+  { id: 'ao', name: 'Arteria aorta', group: 'Vasos sanguíneos', o2: 'r', real: 0xd8a796, did: 0xe8584d,
+    desc: 'La arteria más grande del cuerpo. Sale del ventrículo izquierdo, forma un arco (cayado) hacia la izquierda y baja por detrás del corazón, llevando sangre rica en oxígeno a todo el cuerpo.',
+    fact: 'Del cayado salen tres ramas: el <b>tronco braquiocefálico</b>, la <b>carótida común izquierda</b> y la <b>subclavia izquierda</b>, que irrigan cabeza y brazos.' },
+  { id: 'coronary', name: 'Vasos coronarios', group: 'Vasos sanguíneos', o2: '', real: 0xb3322c, did: 0xff7a3d,
+    desc: 'Las arterias coronarias (derecha e izquierda) nacen de la aorta y llevan oxígeno al propio músculo del corazón. Las venas cardíacas devuelven esa sangre a la aurícula derecha.',
+    fact: 'Si una arteria coronaria se tapa, una parte del miocardio se queda sin oxígeno: eso es un <b>infarto</b>. Van por los surcos, rodeadas de grasa amarilla.' },
+  { id: 'pericardium', name: 'Pericardio', group: 'Capas', o2: '', real: 0xe8d5c4, did: 0xd9c7f0, startHidden: true,
+    desc: 'Saco de doble capa que envuelve al corazón. Entre sus capas hay un poco de líquido que reduce el roce al latir.',
+    fact: 'La pared del corazón tiene tres capas: <b>epicardio</b> (externa), <b>miocardio</b> (músculo, la más gruesa) y <b>endocardio</b> (interna, recubre las cavidades y válvulas).' }
+];
+const PART = Object.fromEntries(PARTS.map(p => [p.id, p]));
+const GROUPS = ['Cavidades', 'Válvulas', 'Vasos sanguíneos', 'Capas'];
+
+const ROUTE = [
+  { parts: ['svc', 'ivc'], c: 'b', t: 'Venas cavas', d: 'La sangre pobre en oxígeno del cuerpo regresa al corazón.' },
+  { parts: ['ra'], c: 'b', t: 'Aurícula derecha', d: 'Recibe la sangre de las venas cavas.', cut: true },
+  { parts: ['tricuspid'], c: 'b', t: 'Válvula tricúspide', d: 'Se abre y la sangre baja al ventrículo derecho.', cut: true },
+  { parts: ['rv'], c: 'b', t: 'Ventrículo derecho', d: 'Se contrae y empuja la sangre hacia los pulmones.', cut: true },
+  { parts: ['pulmonary'], c: 'b', t: 'Válvula pulmonar', d: 'Deja salir la sangre e impide que regrese.', cut: true },
+  { parts: ['pt'], c: 'b', t: 'Arteria pulmonar', d: 'Lleva la sangre a los pulmones.', lungs: true },
+  { parts: ['pv'], c: 'r', t: 'Venas pulmonares', d: 'Regresa la sangre, ahora rica en oxígeno.' },
+  { parts: ['la'], c: 'r', t: 'Aurícula izquierda', d: 'Recibe la sangre de los pulmones.', cut: true },
+  { parts: ['mitral'], c: 'r', t: 'Válvula mitral', d: 'Se abre y la sangre baja al ventrículo izquierdo.', cut: true },
+  { parts: ['lv'], c: 'r', t: 'Ventrículo izquierdo', d: 'Se contrae con fuerza para enviar la sangre a todo el cuerpo.', cut: true },
+  { parts: ['aortic'], c: 'r', t: 'Válvula aórtica', d: 'Deja salir la sangre hacia la aorta.', cut: true },
+  { parts: ['ao'], c: 'r', t: 'Arteria aorta', d: 'Distribuye la sangre oxigenada a todo el cuerpo.' }
+];
+
+const QUIZ_FN = [
+  { q: '¿Qué cavidad bombea sangre rica en oxígeno a todo el cuerpo?', a: 'lv', o: ['rv', 'la', 'ra'] },
+  { q: '¿Qué vasos llevan sangre rica en oxígeno desde los pulmones hasta el corazón?', a: 'pv', o: ['pt', 'svc', 'ao'] },
+  { q: '¿Qué válvula separa la aurícula derecha del ventrículo derecho?', a: 'tricuspid', o: ['mitral', 'pulmonary', 'aortic'] },
+  { q: '¿Qué arteria lleva sangre pobre en oxígeno hacia los pulmones?', a: 'pt', o: ['ao', 'pv', 'coronary'] },
+  { q: '¿Qué estructura impide que se mezcle la sangre del lado derecho con la del izquierdo?', a: 'septum', o: ['pericardium', 'mitral', 'papillary'] },
+  { q: '¿A qué cavidad llega la sangre que traen las venas cavas?', a: 'ra', o: ['la', 'rv', 'lv'] },
+  { q: '¿Qué válvula está entre el ventrículo izquierdo y la arteria aorta?', a: 'aortic', o: ['pulmonary', 'mitral', 'tricuspid'] },
+  { q: '¿Qué vasos llevan oxígeno al propio músculo del corazón?', a: 'coronary', o: ['pv', 'pt', 'svc'] },
+  { q: '¿Qué válvula tiene solo dos valvas?', a: 'mitral', o: ['tricuspid', 'aortic', 'pulmonary'] },
+  { q: '¿Qué estructuras evitan que las valvas de la mitral y la tricúspide se volteen?', a: 'papillary', o: ['septum', 'coronary', 'pericardium'] },
+  { q: '¿Qué saco envuelve y protege al corazón?', a: 'pericardium', o: ['septum', 'papillary', 'coronary'] },
+  { q: '¿Cuál es la arteria más grande del cuerpo?', a: 'ao', o: ['pt', 'coronary', 'ivc'] }
+];
+
+</script>
+<script id="core-src">
+'use strict';
+/* =========================================================
+   2. UTILIDADES MATEMÁTICAS Y RUIDO
+   ========================================================= */
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const len = a => Math.hypot(a[0], a[1], a[2]);
+const norm = a => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const lerp = (a, b, t) => a + (b - a) * t;
+const lerp3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
+const sstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+function smin(a, b, k) { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; }
+const V3 = a => new THREE.Vector3(a[0], a[1], a[2]);
+
+function hash3(i, j, k) {
+  let h = (Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(k, 1274126177)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function noise3(x, y, z) {
+  const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+  const fx = x - ix, fy = y - iy, fz = z - iz;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy), uz = fz * fz * (3 - 2 * fz);
+  const a = hash3(ix, iy, iz), b = hash3(ix + 1, iy, iz), c = hash3(ix, iy + 1, iz), d = hash3(ix + 1, iy + 1, iz);
+  const e = hash3(ix, iy, iz + 1), f = hash3(ix + 1, iy, iz + 1), g = hash3(ix, iy + 1, iz + 1), h = hash3(ix + 1, iy + 1, iz + 1);
+  const x1 = lerp(a, b, ux), x2 = lerp(c, d, ux), x3 = lerp(e, f, ux), x4 = lerp(g, h, ux);
+  return lerp(lerp(x1, x2, uy), lerp(x3, x4, uy), uz);
+}
+function fbm3(x, y, z, oct) {
+  let v = 0, a = 0.5;
+  for (let i = 0; i < oct; i++) { v += a * noise3(x, y, z); x = x * 2.03 + 1.7; y = y * 2.03 + 9.2; z = z * 2.03 + 3.1; a *= 0.5; }
+  return v;
+}
+
+/* =========================================================
+   3. PRIMITIVAS SDF (campos de distancia con signo)
+   ========================================================= */
+function bounded(f, c, R) {
+  const g = (x, y, z) => {
+    const dx = x - c[0], dy = y - c[1], dz = z - c[2];
+    const lb = Math.sqrt(dx * dx + dy * dy + dz * dz) - R;
+    return lb > 0.6 ? lb : f(x, y, z);
+  };
+  g.c = c; g.R = R;
+  return g;
+}
+function roundConeRaw(a, b, r1, r2) {
+  const bax = b[0] - a[0], bay = b[1] - a[1], baz = b[2] - a[2];
+  const l2 = bax * bax + bay * bay + baz * baz;
+  const rr = r1 - r2, a2 = l2 - rr * rr, il2 = 1 / l2, srr = Math.sign(rr);
+  return (x, y, z) => {
+    const pax = x - a[0], pay = y - a[1], paz = z - a[2];
+    const yv = pax * bax + pay * bay + paz * baz;
+    const zv = yv - l2;
+    const xx = pax * l2 - bax * yv, xy = pay * l2 - bay * yv, xz = paz * l2 - baz * yv;
+    const x2 = xx * xx + xy * xy + xz * xz;
+    const y2 = yv * yv * l2, z2 = zv * zv * l2;
+    const k = srr * rr * rr * x2;
+    if (Math.sign(zv) * a2 * z2 > k) return Math.sqrt(x2 + z2) * il2 - r2;
+    if (Math.sign(yv) * a2 * y2 < k) return Math.sqrt(x2 + y2) * il2 - r1;
+    return (Math.sqrt(x2 * a2 * il2) + yv * rr) * il2 - r1;
+  };
+}
+function roundCone(a, b, r1, r2) {
+  return bounded(roundConeRaw(a, b, r1, r2), lerp3(a, b, 0.5), len(sub(b, a)) / 2 + Math.max(r1, r2));
+}
+function sphere(c, r) {
+  return (x, y, z) => Math.hypot(x - c[0], y - c[1], z - c[2]) - r;
+}
+function ellipsoid(c, X, Y, Z, r, taper) {
+  const f = (x, y, z) => {
+    const dx = x - c[0], dy = y - c[1], dz = z - c[2];
+    const lx = dx * X[0] + dy * X[1] + dz * X[2];
+    const ly = dx * Y[0] + dy * Y[1] + dz * Y[2];
+    const lz = dx * Z[0] + dy * Z[1] + dz * Z[2];
+    const s = 1 + taper * clamp(ly / r[1], -1, 1);
+    const rx = r[0] * s, ry = r[1], rz = r[2] * s;
+    const qx = lx / rx, qy = ly / ry, qz = lz / rz;
+    const k0 = Math.sqrt(qx * qx + qy * qy + qz * qz);
+    const k1 = Math.sqrt((qx / rx) ** 2 + (qy / ry) ** 2 + (qz / rz) ** 2);
+    return k1 < 1e-9 ? -Math.min(rx, ry, rz) : (k0 * (k0 - 1)) / k1;
+  };
+  return bounded(f, c, Math.max(r[0], r[1], r[2]) * (1 + Math.abs(taper)));
+}
+// Tubo a lo largo de una curva Catmull-Rom con radio variable
+function tube(points, r0, r1, segs) {
+  const curve = new THREE.CatmullRomCurve3(points.map(V3), false, 'centripetal');
+  const pts = curve.getSpacedPoints(segs).map(v => [v.x, v.y, v.z]);
+  const cones = [];
+  for (let i = 0; i < segs; i++) {
+    const ra = lerp(r0, r1, i / segs), rb = lerp(r0, r1, (i + 1) / segs);
+    const f = roundConeRaw(pts[i], pts[i + 1], ra, rb);
+    const c = lerp3(pts[i], pts[i + 1], 0.5);
+    cones.push({ f, cx: c[0], cy: c[1], cz: c[2], R: len(sub(pts[i + 1], pts[i])) / 2 + Math.max(ra, rb) });
+  }
+  let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+  pts.forEach(p => { for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], p[k]); mx[k] = Math.max(mx[k], p[k]); } });
+  const c = lerp3(mn, mx, 0.5);
+  const R = len(sub(mx, mn)) / 2 + Math.max(r0, r1);
+  const f = (x, y, z) => {
+    let d = 1e9;
+    for (let i = 0; i < cones.length; i++) {
+      const q = cones[i];
+      const dx = x - q.cx, dy = y - q.cy, dz = z - q.cz;
+      if (Math.sqrt(dx * dx + dy * dy + dz * dz) - q.R >= d) continue;
+      const v = q.f(x, y, z);
+      if (v < d) d = v;
+    }
+    return d;
+  };
+  const g = bounded(f, c, R);
+  g.curve = curve;
+  return g;
+}
+// Vaso sanguíneo: pared externa + luz (hueco) abierta en los extremos indicados
+function vessel(points, r0, r1, wall, extStart, extEnd) {
+  const outer = tube(points, r0, r1, Math.max(10, points.length * 7));
+  const lumenT = tube(points, r0 - wall, r1 - wall, Math.max(10, points.length * 7));
+  const c = outer.curve;
+  const p0 = points[0], pN = points[points.length - 1];
+  const t0 = c.getTangent(0), tN = c.getTangent(1);
+  const parts = [lumenT];
+  if (extStart > 0) parts.push(roundCone(add(p0, mul([t0.x, t0.y, t0.z], -extStart)), p0, r0 - wall, r0 - wall));
+  if (extEnd > 0) parts.push(roundCone(pN, add(pN, mul([tN.x, tN.y, tN.z], extEnd)), r1 - wall, r1 - wall));
+  const lumen = (x, y, z) => { let d = parts[0](x, y, z); for (let i = 1; i < parts.length; i++) d = Math.min(d, parts[i](x, y, z)); return d; };
+  return { outer, lumen, curve: c };
+}
+
+/* =========================================================
+   4. DEFINICIÓN ANATÓMICA DEL CORAZÓN
+   Ejes: x = izquierda del paciente (derecha de quien mira),
+         y = arriba, z = hacia el frente (anterior).
+   ========================================================= */
+const AX = norm([0.42, -0.86, 0.28]);          // eje largo: base → ápice
+const BV = [0, 0.3, -0.05];                    // centro de la base ventricular
+const FY = mul(AX, -1);
+const FX = norm(cross(FY, [0, 0, 1]));
+const FZ = cross(FX, FY);
+const fw = (x, y, z) => add(BV, add(add(mul(FX, x), mul(FY, y)), mul(FZ, z)));
+const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+
+const G = {};
+G.cLV = fw(0.18, -1.05, 0);
+const LV = ellipsoid(G.cLV, FX, FY, FZ, [0.70, 1.12, 0.66], 0.16);
+G.cLVc = fw(0.18, -1.02, 0);
+const LVC = ellipsoid(G.cLVc, FX, FY, FZ, [0.47, 0.97, 0.44], 0.2);
+G.cRV = fw(-0.32, -0.74, 0.32);
+const RVe = ellipsoid(G.cRV, FX, FY, FZ, [0.66, 0.82, 0.52], 0.12);
+G.Pbase = fw(0.38, 0.17, 0.54);
+const INF = roundCone(fw(-0.09, -0.48, 0.46), G.Pbase, 0.36, 0.26);
+const RV = (x, y, z) => smin(RVe(x, y, z), INF(x, y, z), 0.15);
+
+G.cRA = [-0.92, 0.75, 0.0];
+const RAe = ellipsoid(G.cRA, ...I3, [0.5, 0.62, 0.52], 0);
+const RAU1 = ellipsoid([-0.66, 1.06, 0.38], ...I3, [0.26, 0.17, 0.2], 0);
+const RAU2 = roundCone([-0.6, 1.08, 0.46], [-0.4, 1.04, 0.64], 0.13, 0.06);
+const RA = (x, y, z) => smin(RAe(x, y, z), smin(RAU1(x, y, z), RAU2(x, y, z), 0.08), 0.1);
+G.cLA = [0.2, 0.85, -0.6];
+const LAe = ellipsoid(G.cLA, ...I3, [0.68, 0.45, 0.46], 0);
+const LAU1 = ellipsoid([0.66, 0.94, -0.12], ...I3, [0.2, 0.15, 0.24], 0);
+const LAU2 = roundCone([0.7, 0.94, 0.0], [0.86, 0.86, 0.32], 0.12, 0.06);
+const LA = (x, y, z) => smin(LAe(x, y, z), smin(LAU1(x, y, z), LAU2(x, y, z), 0.08), 0.1);
+
+// Aorta
+G.Rao = [-0.15, 0.5, -0.05];
+G.aoPts = [G.Rao, [-0.33, 1.0, 0.02], [-0.34, 1.5, -0.04], [-0.12, 1.98, -0.3], [0.2, 2.08, -0.62], [0.42, 1.8, -0.98], [0.47, 1.2, -1.22], [0.47, 0.45, -1.28]];
+const AOv = vessel(G.aoPts, 0.25, 0.2, 0.06, 0.14, 0.14);
+const aoT0 = AOv.curve.getTangent(0);
+G.aoT = [aoT0.x, aoT0.y, aoT0.z];
+G.aoBulbC = add(G.Rao, mul(G.aoT, 0.1));
+const AObulb = sphere(G.aoBulbC, 0.31);
+const AObulbL = sphere(G.aoBulbC, 0.245);
+let uTop = 0.4, yTop = -9;
+for (let i = 0; i <= 200; i++) { const q = AOv.curve.getPoint(i / 200); if (q.y > yTop) { yTop = q.y; uTop = i / 200; } }
+const brPts = [
+  [AOv.curve.getPoint(uTop - 0.075), [-0.22, 0.66, 0.06], 0.105],
+  [AOv.curve.getPoint(uTop - 0.005), [0.0, 0.64, -0.02], 0.075],
+  [AOv.curve.getPoint(uTop + 0.065), [0.14, 0.6, -0.06], 0.08]
+];
+const AObr = brPts.map(([s, d, r]) => { const a = [s.x, s.y, s.z]; return vessel([a, add(a, d)], r + 0.01, r * 0.95, 0.048, 0, 0.14); });
+const AO = (x, y, z) => {
+  let d = smin(AOv.outer(x, y, z), AObulb(x, y, z), 0.08);
+  for (let i = 0; i < AObr.length; i++) d = smin(d, AObr[i].outer(x, y, z), 0.05);
+  return d;
+};
+const AOL = (x, y, z) => {
+  let d = Math.min(AOv.lumen(x, y, z), AObulbL(x, y, z));
+  for (let i = 0; i < AObr.length; i++) d = Math.min(d, AObr[i].lumen(x, y, z));
+  return d;
+};
+// Tronco y arterias pulmonares
+G.Pv = fw(0.38, 0.22, 0.54);
+G.bif = [0.18, 1.52, -0.34];
+const PTv = vessel([G.Pv, [0.34, 1.15, 0.3], [0.32, 1.42, 0.0], G.bif], 0.25, 0.23, 0.055, 0.14, 0);
+const LPAv = vessel([G.bif, [0.55, 1.54, -0.5], [0.95, 1.46, -0.62], [1.25, 1.4, -0.62]], 0.175, 0.165, 0.058, 0, 0.14);
+const RPAv = vessel([G.bif, [-0.25, 1.5, -0.5], [-0.7, 1.45, -0.55], [-1.2, 1.4, -0.5]], 0.17, 0.16, 0.058, 0, 0.14);
+const ptT0 = PTv.curve.getTangent(0); G.ptT = [ptT0.x, ptT0.y, ptT0.z];
+const PT = (x, y, z) => smin(smin(PTv.outer(x, y, z), LPAv.outer(x, y, z), 0.06), RPAv.outer(x, y, z), 0.06);
+const PTL = (x, y, z) => Math.min(PTv.lumen(x, y, z), LPAv.lumen(x, y, z), RPAv.lumen(x, y, z));
+// Venas cavas
+const SVCv = vessel([[-0.84, 2.38, 0.0], [-0.86, 1.7, -0.02], [-0.9, 1.15, -0.02]], 0.19, 0.2, 0.05, 0.14, 0.32);
+const IVCv = vessel([[-0.88, -0.62, -0.2], [-0.9, -0.05, -0.12], [-0.92, 0.32, -0.05]], 0.21, 0.21, 0.05, 0.14, 0.26);
+// Venas pulmonares
+G.pvPts = [
+  [[1.12, 1.12, -0.85], [0.85, 1.0, -0.78], [0.62, 0.95, -0.7]],
+  [[1.08, 0.62, -0.9], [0.82, 0.66, -0.82], [0.6, 0.72, -0.72]],
+  [[-0.6, 1.05, -1.05], [-0.35, 0.98, -0.88], [-0.15, 0.95, -0.78]],
+  [[-0.55, 0.62, -1.1], [-0.32, 0.66, -0.92], [-0.12, 0.7, -0.8]]
+];
+const PVv = G.pvPts.map(p => vessel(p, 0.105, 0.115, 0.048, 0.12, 0.22));
+const PV = (x, y, z) => { let d = PVv[0].outer(x, y, z); for (let i = 1; i < 4; i++) d = Math.min(d, PVv[i].outer(x, y, z)); return d; };
+const PVL = (x, y, z) => { let d = PVv[0].lumen(x, y, z); for (let i = 1; i < 4; i++) d = Math.min(d, PVv[i].lumen(x, y, z)); return d; };
+
+// Conexiones entre cavidades (orificios valvulares)
+G.mitA = [0.3, 0.72, -0.6]; G.mitB = [0.45, -0.1, 0.0];
+G.triA = [-0.88, 0.55, 0.02]; G.triB = [-0.354, -0.228, 0.46];
+G.lvotA = fw(0, -0.5, 0.12);
+const MITc = roundCone(G.mitA, G.mitB, 0.23, 0.23);
+const TRIc = roundCone(G.triA, G.triB, 0.25, 0.25);
+const LVOTc = roundCone(G.lvotA, add(G.Rao, mul(G.aoT, -0.1)), 0.17, 0.18);
+const TRIring = roundCone(lerp3(G.triA, G.triB, 0.3), lerp3(G.triA, G.triB, 0.62), 0.35, 0.35);
+const MITring = roundCone(lerp3(G.mitA, G.mitB, 0.3), lerp3(G.mitA, G.mitB, 0.6), 0.32, 0.32);
+
+let PAP = null;        // músculos papilares (se definen tras ubicar las válvulas)
+let USE_CONN = true;   // usar orificios
+let USE_NOISE = true;
+
+// Evalúa todos los componentes en un punto
+function evalAll(x, y, z) {
+  const lv = LV(x, y, z), rv = RV(x, y, z), ra = RA(x, y, z), la = LA(x, y, z);
+  const ao = AO(x, y, z), pt = PT(x, y, z), svc = SVCv.outer(x, y, z), ivc = IVCv.outer(x, y, z), pv = PV(x, y, z);
+  let s = smin(smin(lv, rv, 0.12), smin(ra, la, 0.1), 0.12);
+  s = smin(s, ao, 0.08); s = smin(s, pt, 0.08); s = smin(s, svc, 0.08); s = smin(s, ivc, 0.08); s = smin(s, pv, 0.06);
+  if (s < 0.6) s = smin(s, Math.min(TRIring(x, y, z), MITring(x, y, z)), 0.12);
+  return { lv, rv, ra, la, ao, pt, svc, ivc, pv, s };
+}
+function cavities(x, y, z, c) {
+  const vent = Math.min(c.lv, c.rv);
+  let lvc = LVC(x, y, z);
+  if (USE_NOISE && Math.abs(lvc) < 0.09) lvc += 0.045 * (fbm3(x * 9, y * 9, z * 9, 2) - 0.45);
+  lvc = Math.max(lvc, 0.07 - c.la, 0.07 - c.ra);
+  let rvc = Math.max(c.rv + 0.09, -c.lv, 0.07 - c.ra, 0.06 - c.ao);
+  if (USE_NOISE && Math.abs(rvc) < 0.08) rvc += 0.035 * (fbm3(x * 10 + 5, y * 10, z * 10, 2) - 0.45);
+  const rac = Math.max(c.ra + 0.075, 0.03 - c.la, 0.07 - vent, 0.05 - c.ao);
+  const lac = Math.max(c.la + 0.075, 0.07 - vent, 0.05 - c.ao, 0.05 - c.pt);
+  const aol = AOL(x, y, z), ptl = PTL(x, y, z), svcl = SVCv.lumen(x, y, z), ivcl = IVCv.lumen(x, y, z), pvl = PVL(x, y, z);
+  let cav = Math.min(lvc, rvc, rac, lac, aol, ptl, svcl, ivcl, pvl);
+  if (USE_CONN) {
+    const mit = Math.max(MITc(x, y, z), 0.07 - rac, 0.07 - rvc, 0.07 - aol, c.s + 0.08);
+    const tri = Math.max(TRIc(x, y, z), 0.07 - lvc, 0.07 - lac, 0.07 - aol, 0.07 - ptl, c.s + 0.08);
+    const lvot = Math.max(LVOTc(x, y, z), 0.07 - rvc, 0.07 - rac, 0.07 - lac, 0.07 - ptl, c.s + 0.08);
+    cav = Math.min(cav, mit, tri, lvot);
+  }
+  let pap = 1e9;
+  if (PAP) { pap = PAP(x, y, z); cav = Math.max(cav, -pap); }
+  return { lvc, rvc, rac, lac, aol, ptl, svcl, ivcl, pvl, cav, pap };
+}
+function heartF(x, y, z) {
+  const c = evalAll(x, y, z);
+  let s = c.s;
+  if (s > 0.15) return s;
+  if (USE_NOISE && Math.abs(s) < 0.06) s += 0.008 * (noise3(x * 7, y * 7, z * 7) - 0.5);
+  const k = cavities(x, y, z, c);
+  return Math.max(s, -k.cav);
+}
+function solidF(x, y, z) { return evalAll(x, y, z).s; }
+function chamberF(x, y, z) { return smin(smin(LV(x, y, z), RV(x, y, z), 0.12), smin(RA(x, y, z), LA(x, y, z), 0.1), 0.12); }
+
+function gradF(F, p, e) {
+  e = e || 0.004;
+  const gx = F(p[0] + e, p[1], p[2]) - F(p[0] - e, p[1], p[2]);
+  const gy = F(p[0], p[1] + e, p[2]) - F(p[0], p[1] - e, p[2]);
+  const gz = F(p[0], p[1], p[2] + e) - F(p[0], p[1], p[2] - e);
+  return norm([gx, gy, gz]);
+}
+function projectSurf(p, F, iters) {
+  let q = p.slice();
+  for (let i = 0; i < (iters || 10); i++) {
+    const d = F(q[0], q[1], q[2]);
+    if (Math.abs(d) < 2e-4) break;
+    q = sub(q, mul(gradF(F, q), d));
+  }
+  return q;
+}
+// Busca el centro de la pared a lo largo de un segmento (para colocar válvulas)
+function wallCenter(a, b) {
+  USE_CONN = false; const prevPap = PAP; PAP = null;
+  let best = 0.5, bv = -1e9;
+  for (let i = 0; i <= 60; i++) {
+    const t = i / 60; const p = lerp3(a, b, t);
+    const v = heartF(p[0], p[1], p[2]);
+    if (v > bv) { bv = v; best = t; }
+  }
+  USE_CONN = true; PAP = prevPap;
+  return lerp3(a, b, best);
+}
+
+
+/* ---- Trabajo pesado reutilizable (hilo principal o Web Worker) ---- */
+const linHex = h => new THREE.Color(h).convertSRGBToLinear();
+// Colores realistas
+const COL = {
+  vent: [linHex(0x4f1512), linHex(0x7a2a22)],
+  atr: [linHex(0x43121f), linHex(0x6a2232)],
+  fat: [linHex(0xb98326), linHex(0xe2b24e)],
+  art: [linHex(0xa86a58), linHex(0xcf9a84)],
+  ven: [linHex(0x3a2848), linHex(0x5e426e)],
+  pvein: [linHex(0x52263e), linHex(0x784260)],
+  endoV: [linHex(0x761d24), linHex(0x9e3439)],
+  endoA: [linHex(0x6e2232), linHex(0x914050)],
+  intA: [linHex(0xc99a82), linHex(0xe4c0a8)],
+  intV: [linHex(0x8c6680), linHex(0xae889c)],
+  pap: [linHex(0x84262c), linHex(0xa44446)]
+};
+const mixC = (pair, t) => pair[0].clone().lerp(pair[1], clamp(t, 0, 1));
+const LBL = ['lv', 'rv', 'ra', 'la', 'septum', 'ao', 'pt', 'svc', 'ivc', 'pv', 'papillary'];
+
+function setupValves() {
+  G.M = wallCenter(G.mitA, G.mitB); G.nM = norm(sub(G.mitB, G.mitA));
+  G.T = wallCenter(G.triA, G.triB); G.nT = norm(sub(G.triB, G.triA));
+  G.Aov = add(G.Rao, mul(G.aoT, 0.04));
+  // 7.2 Músculos papilares
+  const papList = [];
+  const basisOf = (n, ref) => { const e1 = norm(sub(ref, mul(n, dot(ref, n)))); return [e1, cross(n, e1)]; };
+  const [mE1, mE2] = basisOf(G.nM, sub(G.Rao, G.M));
+  G.mE1 = mE1; G.mE2 = mE2;
+  G.papM = [
+    add(add(G.M, mul(G.nM, 0.5)), add(mul(mE2, 0.2), mul(mE1, -0.05))),
+    add(add(G.M, mul(G.nM, 0.5)), add(mul(mE2, -0.2), mul(mE1, -0.05)))
+  ];
+  G.papM.forEach((tip, i) => {
+    const out = norm(sub(tip, add(G.M, mul(G.nM, 0.5))));
+    papList.push(roundCone(tip, add(add(tip, mul(G.nM, 0.4)), mul(out, 0.35)), 0.06, 0.12));
+  });
+  const [tE1, tE2] = basisOf(G.nT, sub(G.cLV, G.T));
+  G.tE1 = tE1; G.tE2 = tE2;
+  G.papT = [0.5, 2.6, 4.4].map(a => {
+    const dir = add(mul(tE1, Math.cos(a)), mul(tE2, Math.sin(a)));
+    return add(add(G.T, mul(G.nT, 0.46)), mul(dir, 0.18));
+  });
+  G.papT.forEach(tip => {
+    const out = norm(sub(tip, add(G.T, mul(G.nT, 0.46))));
+    papList.push(roundCone(tip, add(add(tip, mul(G.nT, 0.32)), mul(out, 0.3)), 0.045, 0.09));
+  });
+  PAP = (x, y, z) => { let d = papList[0](x, y, z); for (let i = 1; i < papList.length; i++) d = Math.min(d, papList[i](x, y, z)); return d; };
+}
+
+// Valores de la función de distancia para las capas z en [k0, k1)
+function gridSlab(bmin, bmax, h, k0, k1) {
+  const F = heartF;
+  const nx = Math.ceil((bmax[0] - bmin[0]) / h) + 1, ny = Math.ceil((bmax[1] - bmin[1]) / h) + 1;
+  const C = 4, Hc = h * C;
+  const cnx = Math.floor((nx - 1) / C) + 2, cny = Math.floor((ny - 1) / C) + 2;
+  const ck0 = Math.round(k0 / C), ck1 = Math.round((k1 - 1) / C);
+  const cv = new Float32Array(cnx * cny * (ck1 - ck0 + 1));
+  for (let k = ck0; k <= ck1; k++) for (let j = 0; j < cny; j++) for (let i = 0; i < cnx; i++)
+    cv[i + cnx * (j + cny * (k - ck0))] = F(bmin[0] + i * Hc, bmin[1] + j * Hc, bmin[2] + k * Hc);
+  const out = new Float32Array(nx * ny * (k1 - k0));
+  const thr = Hc * 1.3;
+  for (let k = k0; k < k1; k++) {
+    const z = bmin[2] + k * h, ck = Math.round(k / C) - ck0;
+    for (let j = 0; j < ny; j++) {
+      const y = bmin[1] + j * h, cj = Math.round(j / C);
+      for (let i = 0; i < nx; i++) {
+        const c = cv[Math.round(i / C) + cnx * (cj + cny * ck)];
+        out[i + nx * (j + ny * (k - k0))] = Math.abs(c) > thr ? c : F(bmin[0] + i * h, y, z);
+      }
+    }
+  }
+  return out;
+}
+
+// Proyección a la superficie, normales, oclusión, etiqueta y color de un bloque de vértices
+function shadeRange(pos, H, DID) {
+  const nV = pos.length / 3;
+  const nrm = new Float32Array(nV * 3);
+  const label = new Uint8Array(nV);
+  const colR = new Float32Array(nV * 3), colD = new Float32Array(nV * 3);
+  const e = 0.004;
+  for (let i = 0; i < nV; i++) {
+    let x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const f1 = heartF(x + e, y - e, z - e), f2 = heartF(x - e, y - e, z + e), f3 = heartF(x - e, y + e, z - e), f4 = heartF(x + e, y + e, z + e);
+    let gx = f1 - f2 - f3 + f4, gy = -f1 - f2 + f3 + f4, gz = -f1 + f2 - f3 + f4;
+    const gl = Math.hypot(gx, gy, gz) || 1; gx /= gl; gy /= gl; gz /= gl;
+    const d = (f1 + f2 + f3 + f4) / 4;
+    const dc = clamp(d, -H, H);
+    x -= gx * dc; y -= gy * dc; z -= gz * dc;
+    pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+    nrm[i * 3] = gx; nrm[i * 3 + 1] = gy; nrm[i * 3 + 2] = gz;
+    // oclusión ambiental aproximada (oscurece surcos y el fondo de las cavidades)
+    let occ = 0;
+    const AOD = [0.05, 0.12, 0.26], AOW = [0.45, 0.35, 0.3];
+    for (let q = 0; q < 3; q++) { const dd = AOD[q]; const vv = heartF(x + gx * dd, y + gy * dd, z + gz * dd); occ += AOW[q] * (dd - Math.min(Math.max(vv, 0), dd)) / dd; }
+    const ao = clamp(1 - occ * 0.95, 0.3, 1);
+
+    // clasificación
+    const c = evalAll(x, y, z);
+    const k = cavities(x, y, z, c);
+    const inner = k.cav < -c.s;
+    let lb;
+    if (inner && k.pap < 0.03) lb = 'papillary';
+    else if (inner && c.s < -0.05 && ((k.lvc < 0.3 && k.rvc < 0.3) || (k.rac < 0.22 && k.lac < 0.22))) lb = 'septum';
+    else if (inner) {
+      const cand = [['lv', k.lvc], ['rv', k.rvc], ['ra', k.rac], ['la', k.lac], ['ao', k.aol], ['pt', k.ptl], ['svc', k.svcl], ['ivc', k.ivcl], ['pv', k.pvl]];
+      let bi = 0; for (let q = 1; q < cand.length; q++) if (Math.abs(cand[q][1]) < Math.abs(cand[bi][1])) bi = q;
+      lb = cand[bi][0];
+    } else {
+      const cand = [['lv', c.lv], ['rv', c.rv], ['ra', c.ra], ['la', c.la], ['ao', c.ao], ['pt', c.pt], ['svc', c.svc], ['ivc', c.ivc], ['pv', c.pv]];
+      let bi = 0; for (let q = 1; q < cand.length; q++) if (cand[q][1] < cand[bi][1]) bi = q;
+      lb = cand[bi][0];
+    }
+    label[i] = LBL.indexOf(lb);
+
+    // color realista
+    const n1 = fbm3(x * 5, y * 5, z * 5, 3), n2 = fbm3(x * 14 + 3, y * 14, z * 14, 2);
+    let col;
+    const isAtr = lb === 'ra' || lb === 'la';
+    const isVen = lb === 'lv' || lb === 'rv' || lb === 'septum';
+    if (lb === 'papillary') col = mixC(COL.pap, n2 * 1.2);
+    else if (inner) {
+      if (isVen) col = mixC(COL.endoV, n1 * 0.9 + n2 * 0.5 - 0.2);
+      else if (isAtr) col = mixC(COL.endoA, n1 + n2 * 0.4 - 0.2);
+      else if (lb === 'ao' || lb === 'pt') col = mixC(COL.intA, n1);
+      else col = mixC(COL.intV, n1);
+    } else {
+      if (isVen) col = mixC(COL.vent, n1 * 1.1 + n2 * 0.4 - 0.25);
+      else if (isAtr) col = mixC(COL.atr, n1 * 1.1 + n2 * 0.3 - 0.2);
+      else if (lb === 'ao' || lb === 'pt') col = mixC(COL.art, n1 * 1.2 - 0.1);
+      else if (lb === 'pv') col = mixC(COL.pvein, n1);
+      else col = mixC(COL.ven, n1);
+      // grasa epicárdica en surcos
+      const vent = Math.min(c.lv, c.rv), atr = Math.min(c.ra, c.la);
+      let w = 0;
+      const along = dot(sub([x, y, z], BV), AX);
+      const baseF = 1 - 0.55 * sstep(0.5, 2.0, along);
+      if (Math.abs(c.lv) < 0.2 && Math.abs(c.rv) < 0.2) w = Math.max(w, baseF * Math.exp(-((((c.lv - c.rv) / (0.05 + 0.04 * baseF))) ** 2)));
+      if (atr < 0.25 && vent < 0.25) w = Math.max(w, Math.exp(-((((atr - vent) / 0.1)) ** 2)));
+      const vmin = Math.min(c.ao, c.pt);
+      if (vmin < 0.2 && vent < 0.3) w = Math.max(w, 0.8 * Math.exp(-(((vmin - Math.min(vent, atr)) / 0.12) ** 2)));
+      const lob = fbm3(x * 11 + 11, y * 11, z * 11, 3);
+      const fat = sstep(0.36, 0.56, w * (0.4 + lob * 1.1));
+      if (fat > 0) col = col.clone().lerp(mixC(COL.fat, lob * 1.5 - 0.25 + 0.3 * (n2 - 0.5)), fat);
+    }
+    col = col.clone().multiplyScalar(ao);
+    colR[i * 3] = col.r; colR[i * 3 + 1] = col.g; colR[i * 3 + 2] = col.b;
+    const dc2 = linHex(DID[lb]).multiplyScalar(((inner ? 1.12 : 0.92) + 0.18 * (n1 - 0.5)) * (0.45 + 0.55 * ao));
+    colD[i * 3] = dc2.r; colD[i * 3 + 1] = dc2.g; colD[i * 3 + 2] = dc2.b;
+      }
+  return { pos, nrm, label, colR, colD };
+}
+</script>
+<script>
+'use strict';
+
+/* ---- Web Workers: reparten el cálculo entre los núcleos del procesador ---- */
+const CORE_SRC = document.getElementById('core-src').textContent;
+let POOL = null;
+function getPool() {
+  if (POOL !== null) return POOL;
+  POOL = [];
+  try {
+    if (typeof Worker === 'undefined' || typeof Blob === 'undefined') return POOL;
+    const n = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+    const code = "importScripts('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');\n" + CORE_SRC +
+      "\n;setupValves();\nonmessage = function (e) { const m = e.data; try {\n" +
+      "  if (m.type === 'grid') { const v = gridSlab(m.bmin, m.bmax, m.h, m.k0, m.k1); postMessage({ id: m.id, res: v }, [v.buffer]); }\n" +
+      "  else { const r = shadeRange(m.pos, m.H, m.did); postMessage({ id: m.id, res: r }, [r.pos.buffer, r.nrm.buffer, r.label.buffer, r.colR.buffer, r.colD.buffer]); }\n" +
+      "} catch (err) { postMessage({ id: m.id, err: String(err) }); } };";
+    const url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+    for (let i = 0; i < n; i++) POOL.push(new Worker(url));
+  } catch (err) { console.warn('Sin Web Workers:', err); POOL = []; }
+  return POOL;
+}
+// Ejecuta trabajos en paralelo; si un hilo falla, ese trabajo se hace en el hilo principal.
+async function runJobs(jobs, local, onDone) {
+  const pool = getPool();
+  const results = new Array(jobs.length);
+  let next = 0, done = 0;
+  const finish = (i, r) => { results[i] = r; done++; onDone && onDone(done / jobs.length); };
+  const runLocal = async i => { await tick(); finish(i, local(jobs[i])); };
+  if (!pool.length) { for (let i = 0; i < jobs.length; i++) await runLocal(i); return results; }
+  await Promise.all(pool.map(w => new Promise(resolve => {
+    let cur = -1, dead = false;
+    const pump = async () => {
+      while (dead && next < jobs.length) await runLocal(next++);
+      if (next >= jobs.length) { resolve(); return; }
+      cur = next++;
+      w.postMessage(Object.assign({ id: cur }, jobs[cur]));
+    };
+    const fail = async err => { console.warn('Hilo de cálculo falló; sigo en el principal.', err); dead = true; const c = cur; cur = -1; if (c >= 0) await runLocal(c); pump(); };
+    w.onmessage = e => { if (e.data.err) { fail(e.data.err); return; } const c = cur; cur = -1; finish(c, e.data.res); pump(); };
+    w.onerror = e => { e.preventDefault && e.preventDefault(); fail(e.message || e); };
+    pump();
+  })));
+  return results;
+}
+async function computeGrid(bmin, bmax, h, nx, ny, nz, onProg) {
+  const nJobs = Math.max(8, getPool().length * 4);
+  const step = Math.ceil(nz / nJobs), jobs = [];
+  for (let k0 = 0; k0 < nz; k0 += step) jobs.push({ type: 'grid', bmin, bmax, h, k0, k1: Math.min(nz, k0 + step) });
+  const parts = await runJobs(jobs, j => gridSlab(j.bmin, j.bmax, j.h, j.k0, j.k1), onProg);
+  const vals = new Float32Array(nx * ny * nz);
+  jobs.forEach((j, i) => vals.set(parts[i], nx * ny * j.k0));
+  return vals;
+}
+
+/* =========================================================
+   5. EXTRACCIÓN DE SUPERFICIE (Surface Nets)
+   ========================================================= */
+const tick = () => new Promise(r => setTimeout(r, 0));
+async function polygonize(F, bmin, bmax, h, onProg) {
+  const nx = Math.ceil((bmax[0] - bmin[0]) / h) + 1, ny = Math.ceil((bmax[1] - bmin[1]) / h) + 1, nz = Math.ceil((bmax[2] - bmin[2]) / h) + 1;
+  const C = 4, Hc = h * C;
+  const cnx = Math.floor((nx - 1) / C) + 2, cny = Math.floor((ny - 1) / C) + 2, cnz = Math.floor((nz - 1) / C) + 2;
+  const vals = await computeGrid(bmin, bmax, h, nx, ny, nz, onProg);
+  const sxy = nx * ny;
+  const cellIdx = new Int32Array(nx * ny * nz).fill(-1);
+  const verts = [];
+  const co = [0, 1, nx, nx + 1, sxy, sxy + 1, sxy + nx, sxy + nx + 1];
+  const cx = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]];
+  const E = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
+  const v = new Float32Array(8);
+  for (let k = 0; k < nz - 1; k++) for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    const base = i + nx * (j + ny * k);
+    let mask = 0;
+    for (let c = 0; c < 8; c++) { v[c] = vals[base + co[c]]; if (v[c] < 0) mask |= 1 << c; }
+    if (mask === 0 || mask === 255) continue;
+    let px = 0, py = 0, pz = 0, n = 0;
+    for (let e = 0; e < 12; e++) {
+      const a = E[e][0], b = E[e][1];
+      if ((v[a] < 0) !== (v[b] < 0)) {
+        const t = v[a] / (v[a] - v[b]);
+        px += cx[a][0] + t * (cx[b][0] - cx[a][0]);
+        py += cx[a][1] + t * (cx[b][1] - cx[a][1]);
+        pz += cx[a][2] + t * (cx[b][2] - cx[a][2]);
+        n++;
+      }
+    }
+    cellIdx[base] = verts.length / 3;
+    verts.push(bmin[0] + (i + px / n) * h, bmin[1] + (j + py / n) * h, bmin[2] + (k + pz / n) * h);
+  }
+  const idx = [];
+  const quad = (a, b, c, d) => { if (a < 0 || b < 0 || c < 0 || d < 0) return; idx.push(a, b, c, a, c, d); };
+  for (let k = 0; k < nz; k++) for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const base = i + nx * (j + ny * k);
+    const in0 = vals[base] < 0;
+    if (i < nx - 1 && j > 0 && k > 0 && j < ny - 1 && k < nz - 1 && in0 !== (vals[base + 1] < 0)) {
+      const a = cellIdx[base - nx - sxy], b = cellIdx[base - sxy], c = cellIdx[base], d = cellIdx[base - nx];
+      in0 ? quad(a, b, c, d) : quad(a, d, c, b);
+    }
+    if (j < ny - 1 && i > 0 && k > 0 && i < nx - 1 && k < nz - 1 && in0 !== (vals[base + nx] < 0)) {
+      const a = cellIdx[base - 1 - sxy], b = cellIdx[base - 1], c = cellIdx[base], d = cellIdx[base - sxy];
+      in0 ? quad(a, b, c, d) : quad(a, d, c, b);
+    }
+    if (k < nz - 1 && i > 0 && j > 0 && i < nx - 1 && j < ny - 1 && in0 !== (vals[base + sxy] < 0)) {
+      const a = cellIdx[base - 1 - nx], b = cellIdx[base - nx], c = cellIdx[base], d = cellIdx[base - 1];
+      in0 ? quad(a, b, c, d) : quad(a, d, c, b);
+    }
+  }
+  return { pos: new Float32Array(verts), idx: new Uint32Array(idx) };
+}
+
+/* =========================================================
+   6. ESCENA THREE.JS
+   ========================================================= */
+const container = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, stencil: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.localClippingEnabled = true;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.05, 100);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 2.2; controls.maxDistance = 14;
+controls.autoRotateSpeed = 1.2;
+const TARGET = new THREE.Vector3(0.12, 0.42, -0.1);
+
+(function envMap() {
+  const pm = new THREE.PMREMGenerator(renderer);
+  const es = new THREE.Scene();
+  es.background = new THREE.Color(0x1a1f2b);
+  const g = new THREE.PlaneGeometry(10, 10);
+  const add = (color, p, look) => { const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })); m.position.set(...p); m.lookAt(0, 0, 0); es.add(m); };
+  add(0xffffff, [0, 9, 3]); add(0xfff0e6, [8, 3, 7]); add(0x9cc4ff, [-8, 1, 4]); add(0xffd0d0, [0, 2, -9]); add(0x3a2a2a, [0, -9, 0]);
+  scene.environment = pm.fromScene(es, 0.03).texture;
+  pm.dispose();
+})();
+scene.add(new THREE.HemisphereLight(0xf5f7ff, 0x2a1a1f, 0.3));
+const key = new THREE.DirectionalLight(0xfff1e6, 1.5); key.position.set(4, 7, 6); scene.add(key);
+const fill = new THREE.DirectionalLight(0xa9c8ff, 0.5); fill.position.set(-6, 1, 3); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffb3b3, 0.8); rim.position.set(0, 3, -7); scene.add(rim);
+
+const heart = new THREE.Group();
+scene.add(heart);
+
+// --- Uniformes compartidos del latido (deformación en la GPU) ---
+const BEAT = {
+  uSys: { value: 0 }, uAtr: { value: 0 },
+  uBase: { value: V3(fw(0.18, -0.12, 0)) }, uAxis: { value: V3(AX) }, uAtrC: { value: V3([-0.25, 0.8, -0.35]) }
+};
+const NOISE_GLSL = `
+float h13(vec3 p){ p = fract(p*0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f*f*(3.0-2.0*f);
+  return mix(mix(mix(h13(i), h13(i+vec3(1,0,0)), f.x), mix(h13(i+vec3(0,1,0)), h13(i+vec3(1,1,0)), f.x), f.y),
+             mix(mix(h13(i+vec3(0,0,1)), h13(i+vec3(1,0,1)), f.x), mix(h13(i+vec3(0,1,1)), h13(i+vec3(1,1,1)), f.x), f.y), f.z); }
+float fbmG(vec3 p){ float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++){ v += a*vn(p); p = p*2.03 + vec3(1.7, 9.2, 3.1); a *= 0.5; } return v; }`;
+const BEAT_VERT = `
+  vObjPos = position;
+  {
+    vec3 rel = transformed - uBase;
+    float along = dot(rel, uAxis);
+    float wV = smoothstep(-0.05, 0.3, along);
+    float wA = (1.0 - smoothstep(-0.1, 0.15, along)) * (1.0 - smoothstep(1.05, 1.45, transformed.y));
+    vec3 radial = rel - uAxis * along;
+    transformed -= radial * (0.085 * uSys * wV);
+    transformed -= uAxis * along * (0.045 * uSys * wV);
+    transformed -= (transformed - uAtrC) * (0.06 * uAtr * wA);
+  }`;
+function injectBeat(shader) {
+  shader.uniforms.uSys = BEAT.uSys; shader.uniforms.uAtr = BEAT.uAtr;
+  shader.uniforms.uBase = BEAT.uBase; shader.uniforms.uAxis = BEAT.uAxis; shader.uniforms.uAtrC = BEAT.uAtrC;
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying vec3 vObjPos;\nuniform float uSys; uniform float uAtr; uniform vec3 uBase; uniform vec3 uAxis; uniform vec3 uAtrC;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\n' + BEAT_VERT);
+}
+function tissueMaterial(opts) {
+  const m = new THREE.MeshPhysicalMaterial({
+    color: opts.color !== undefined ? opts.color : 0xffffff,
+    vertexColors: !!opts.vc,
+    roughness: opts.rough !== undefined ? opts.rough : 0.42,
+    metalness: 0,
+    clearcoat: opts.cc !== undefined ? opts.cc : 0.8,
+    clearcoatRoughness: opts.ccr !== undefined ? opts.ccr : 0.2,
+    side: opts.side || THREE.FrontSide,
+    envMapIntensity: 0.5
+  });
+  const bump = opts.bump !== undefined ? opts.bump : 0.012, freq = opts.freq || 22;
+  m.userData.base = { rough: m.roughness, cc: m.clearcoat };
+  m.onBeforeCompile = (shader) => {
+    injectBeat(shader);
+    shader.uniforms.uBump = { value: bump }; shader.uniforms.uFreq = { value: freq };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vObjPos;\nuniform float uBump; uniform float uFreq;\n' + NOISE_GLSL)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        if (uBump > 0.0) {
+          float hgt = fbmG(vObjPos * uFreq) + 0.35 * fbmG(vObjPos * uFreq * 3.1);
+          vec3 dpx = dFdx(-vViewPosition); vec3 dpy = dFdy(-vViewPosition);
+          float dhx = dFdx(hgt) * uBump; float dhy = dFdy(hgt) * uBump;
+          vec3 bR1 = cross(dpy, normal); vec3 bR2 = cross(normal, dpx);
+          float bDet = dot(dpx, bR1);
+          vec3 bGr = sign(bDet) * (dhx * bR1 + dhy * bR2);
+          normal = normalize(abs(bDet) * normal - bGr);
+        }`);
+  };
+  return m;
+}
+// linHex está en el núcleo de cálculo
+
+/* =========================================================
+   7. CONSTRUCCIÓN DEL MODELO
+   ========================================================= */
+const state = {
+  mode: 'real', xray: false, labels: true, flow: false, beating: true, slow: false,
+  tool: 'orbit', explode: 0, cut: null, cutOffset: 0, cutFlip: 1,
+  selected: null, parts: {}, pins: [], strokes: [], penColor: '#facc15', penSize: 4
+};
+const surfaceMeshes = [];   // mallas de tejido cerrado (para tapas de corte)
+const allPickables = [];
+const animatedValves = [];
+let chordae = null;
+
+function setLoad(p, msg) {
+  document.getElementById('load-bar').style.width = Math.round(p * 100) + '%';
+  if (msg) document.getElementById('load-msg').textContent = msg;
+}
+
+function registerMesh(partId, mesh, opts) {
+  opts = opts || {};
+  const p = state.parts[partId] || (state.parts[partId] = { ...PART[partId], meshes: [], visible: !PART[partId].startHidden, highlight: false });
+  mesh.userData.partId = partId;
+  p.meshes.push(mesh);
+  heart.add(mesh);
+  if (!opts.noPick) allPickables.push(mesh);
+  mesh.visible = p.visible;
+  return mesh;
+}
+
+
+async function buildHeart() {
+  const bmin = [-1.58, -1.82, -1.66], bmax = [1.66, 2.9, 1.28];
+  const H = 0.03;
+
+  // 7.1 Válvulas: centros a partir de la pared real
+  setLoad(0.02, 'Ubicando las válvulas…');
+  await tick();
+  setupValves();
+
+  // 7.3 Superficie principal
+  setLoad(0.05, 'Modelando cavidades y paredes…');
+  const t0 = performance.now();
+  const { pos, idx } = await polygonize(heartF, bmin, bmax, H, p => setLoad(0.05 + 0.6 * p));
+  console.log('polygonize', Math.round(performance.now() - t0), 'ms', pos.length / 3, 'vértices');
+
+  // 7.4 Proyección a la superficie, normales, etiquetas y color
+  setLoad(0.68, 'Puliendo la superficie y pintando tejidos…');
+  await tick();
+  const nV = pos.length / 3;
+  const nrm = new Float32Array(nV * 3);
+  const label = new Uint8Array(nV);
+  const colR = new Float32Array(nV * 3), colD = new Float32Array(nV * 3);
+  const DID = Object.fromEntries(LBL.map(id => [id, PART[id].did]));
+  {
+    const nJobs = Math.max(8, getPool().length * 3), per = Math.ceil(nV / nJobs), jobs = [];
+    for (let s = 0; s < nV; s += per) jobs.push({ type: 'shade', s, pos: pos.slice(s * 3, Math.min(nV, s + per) * 3), H, did: DID });
+    const res = await runJobs(jobs, j => shadeRange(j.pos, j.H, j.did), p => setLoad(0.68 + 0.22 * p));
+    jobs.forEach((j, q) => { const r = res[q];
+      pos.set(r.pos, j.s * 3); nrm.set(r.nrm, j.s * 3); label.set(r.label, j.s); colR.set(r.colR, j.s * 3); colD.set(r.colD, j.s * 3); });
+  }
+
+  // 7.5 Separar en mallas por parte
+  console.log('vertex pass', Math.round(performance.now() - t0), 'ms');
+  setLoad(0.9, 'Separando las partes…');
+  await tick();
+  const triLists = LBL.map(() => []);
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = label[idx[t]], b = label[idx[t + 1]], c = label[idx[t + 2]];
+    const l = a === b || a === c ? a : b === c ? b : a;
+    triLists[l].push(idx[t], idx[t + 1], idx[t + 2]);
+  }
+  LBL.forEach((id, li) => {
+    const tris = triLists[li];
+    if (!tris.length) return;
+    const map = new Map(); const P = [], N = [], CR = [], CD = [], I = [];
+    for (const vi of tris) {
+      let ni = map.get(vi);
+      if (ni === undefined) {
+        ni = P.length / 3; map.set(vi, ni);
+        P.push(pos[vi * 3], pos[vi * 3 + 1], pos[vi * 3 + 2]);
+        N.push(nrm[vi * 3], nrm[vi * 3 + 1], nrm[vi * 3 + 2]);
+        CR.push(colR[vi * 3], colR[vi * 3 + 1], colR[vi * 3 + 2]);
+        CD.push(colD[vi * 3], colD[vi * 3 + 1], colD[vi * 3 + 2]);
+      }
+      I.push(ni);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(CR.slice(), 3));
+    g.setIndex(I);
+    g.userData.colR = new Float32Array(CR); g.userData.colD = new Float32Array(CD);
+    g.computeBoundingSphere();
+    const mat = tissueMaterial({ vc: true, rough: id === 'ao' || id === 'pt' ? 0.4 : 0.46, cc: 0.85, ccr: 0.16, bump: 0.0055, freq: id === 'lv' || id === 'rv' ? 15 : 12 });
+    const mesh = new THREE.Mesh(g, mat);
+    mesh.userData.vc = true;
+    mesh.renderOrder = 3;
+    registerMesh(id, mesh);
+    surfaceMeshes.push(mesh);
+  });
+
+  // 7.6 Válvulas, cuerdas, coronarias y pericardio
+  setLoad(0.93, 'Colocando válvulas y arterias coronarias…');
+  await tick();
+  buildValves();
+  const t1 = performance.now();
+  buildCoronaries();
+  console.log('coronaries', Math.round(performance.now() - t1), 'ms');
+  await buildPericardium(bmin, bmax);
+  console.log('total', Math.round(performance.now() - t0), 'ms');
+  setupCaps();
+  buildAnchors();
+  setLoad(1);
+}
+
+/* ---------- Válvulas ---------- */
+function makeLeafletValve(cfg) {
+  // cfg: {c, n, e1, e2, R, ranges:[[a0,a1]], type:'av'|'sl'}
+  const S = 14, T = 8;
+  const g = new THREE.BufferGeometry();
+  const nPer = (S + 1) * (T + 1);
+  const P = new Float32Array(nPer * cfg.ranges.length * 3);
+  const I = [];
+  cfg.ranges.forEach((r, li) => {
+    const o = li * nPer;
+    for (let s = 0; s < S; s++) for (let t = 0; t < T; t++) {
+      const a = o + s * (T + 1) + t, b = a + T + 1;
+      I.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  });
+  g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+  g.setIndex(I);
+  const valve = { cfg, g, S, T, nPer, open: -1 };
+  valve.leafPoint = (li, s, t, open) => {
+    const { c, n, e1, e2, R, ranges, type } = cfg;
+    const [a0, a1] = ranges[li];
+    const ph = a0 + s * (a1 - a0);
+    const dir = add(mul(e1, Math.cos(ph)), mul(e2, Math.sin(ph)));
+    const ss = Math.sin(Math.PI * s), st = Math.sin(Math.PI * t);
+    if (type === 'av') {
+      const A = add(c, mul(dir, R));
+      const df = 0.35 + 0.65 * Math.pow(ss, 0.6);
+      const Fc = add(add(c, mul(dir, R * 0.08)), mul(n, 0.17));
+      const Fo = add(add(c, mul(dir, R * 0.68)), mul(n, 0.4));
+      const F = lerp3(A, lerp3(Fc, Fo, open), df);
+      let p = lerp3(A, F, t);
+      p = add(p, mul(n, -0.07 * st * ss * (1 - open)));
+      p = add(p, mul(dir, -0.035 * st * open));
+      return p;
+    } else {
+      const Wt = add(c, mul(dir, R));
+      const W = add(Wt, mul(n, -0.17 * ss));
+      const Fc = add(add(c, mul(dir, R * 0.05)), mul(n, 0.015));
+      const Fo = add(add(c, mul(dir, R * 0.8)), mul(n, 0.14));
+      const F = lerp3(Wt, lerp3(Fc, Fo, open), Math.pow(ss, 0.5));
+      let p = lerp3(W, F, t);
+      p = add(p, mul(n, -0.085 * ss * st * (1 - open * 0.7)));
+      return p;
+    }
+  };
+  valve.update = (open) => {
+    if (Math.abs(open - valve.open) < 0.002) return;
+    valve.open = open;
+    for (let li = 0; li < cfg.ranges.length; li++) {
+      for (let s = 0; s <= S; s++) for (let t = 0; t <= T; t++) {
+        const p = valve.leafPoint(li, s / S, t / T, open);
+        const k = (li * nPer + s * (T + 1) + t) * 3;
+        P[k] = p[0]; P[k + 1] = p[1]; P[k + 2] = p[2];
+      }
+    }
+    g.attributes.position.needsUpdate = true;
+    g.computeVertexNormals();
+    g.computeBoundingSphere();
+  };
+  return valve;
+}
+function ringMesh(c, n, R, mat) {
+  const m = new THREE.Mesh(new THREE.TorusGeometry(R, 0.022, 8, 48), mat);
+  m.position.set(...c);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), V3(n));
+  return m;
+}
+function buildValves() {
+  const deg = Math.PI / 180;
+  const mk = (id, cfg, ring) => {
+    const v = makeLeafletValve(cfg);
+    v.update(cfg.type === 'av' ? 1 : 0);
+    const mat = tissueMaterial({ color: linHex(PART[id].real), rough: 0.5, cc: 0.6, ccr: 0.25, bump: 0.004, freq: 30, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(v.g, mat);
+    mesh.userData.colKey = id;
+    registerMesh(id, mesh);
+    if (ring) registerMesh(id, Object.assign(ringMesh(cfg.c, cfg.n, cfg.R, mat), { userData: { colKey: id } }));
+    animatedValves.push(v);
+    v.id = id;
+    return v;
+  };
+  G.vMit = mk('mitral', { c: G.M, n: G.nM, e1: G.mE1, e2: G.mE2, R: 0.215, type: 'av', ranges: [[-75 * deg, 75 * deg], [85 * deg, 275 * deg]] }, true);
+  G.vTri = mk('tricuspid', { c: G.T, n: G.nT, e1: G.tE1, e2: G.tE2, R: 0.235, type: 'av', ranges: [[-50 * deg, 65 * deg], [72 * deg, 188 * deg], [195 * deg, 303 * deg]] }, true);
+  const slBasis = (n) => { const e1 = norm(cross(n, [0, 0, 1])); return [e1, cross(n, e1)]; };
+  const [a1, a2] = slBasis(G.aoT);
+  G.vAo = mk('aortic', { c: G.Aov, n: G.aoT, e1: a1, e2: a2, R: 0.19, type: 'sl', ranges: [[3 * deg, 117 * deg], [123 * deg, 237 * deg], [243 * deg, 357 * deg]] }, false);
+  const [p1, p2] = slBasis(G.ptT);
+  G.vPu = mk('pulmonary', { c: add(G.Pv, mul(G.ptT, 0.02)), n: G.ptT, e1: p1, e2: p2, R: 0.19, type: 'sl', ranges: [[33 * deg, 147 * deg], [153 * deg, 267 * deg], [273 * deg, 387 * deg]] }, false);
+
+  // Cuerdas tendinosas
+  const links = [];
+  const addLinks = (valve, tips) => {
+    valve.cfg.ranges.forEach((r, li) => {
+      [0.22, 0.5, 0.78].forEach(s => {
+        const p = valve.leafPoint(li, s, 1, 1);
+        let best = 0, bd = 1e9;
+        tips.forEach((tp, ti) => { const d = len(sub(tp, p)); if (d < bd) { bd = d; best = ti; } });
+        links.push({ valve, li, s, tip: tips[best] });
+      });
+    });
+  };
+  addLinks(G.vMit, G.papM);
+  addLinks(G.vTri, G.papT);
+  const cg = new THREE.CylinderGeometry(0.0075, 0.0075, 1, 5, 1, true);
+  const cmat = tissueMaterial({ color: linHex(0xf3ead8), rough: 0.45, cc: 0.5, bump: 0 });
+  chordae = new THREE.InstancedMesh(cg, cmat, links.length);
+  chordae.userData.links = links;
+  chordae.userData.colKey = 'papillary';
+  chordae.frustumCulled = false;
+  registerMesh('papillary', chordae);
+  updateChordae();
+}
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+function updateChordae() {
+  if (!chordae) return;
+  chordae.userData.links.forEach((L, i) => {
+    const a = L.valve.leafPoint(L.li, L.s, 1, Math.max(0, L.valve.open));
+    const b = L.tip;
+    const d = sub(b, a); const l = len(d);
+    _p.set(...lerp3(a, b, 0.5));
+    _q.setFromUnitVectors(_up, V3(norm(d)));
+    _s.set(1, l, 1);
+    _m4.compose(_p, _q, _s);
+    chordae.setMatrixAt(i, _m4);
+  });
+  chordae.instanceMatrix.needsUpdate = true;
+}
+
+/* ---------- Arterias y venas coronarias ---------- */
+function buildCoronaries() {
+  const sF = chamberF;
+  const metricLR = q => { const c = evalAll(q[0], q[1], q[2]); return Math.abs(c.lv - c.rv) + (Math.abs(c.lv) > 0.15 ? 1 : 0); };
+  const metricAV = q => { const c = evalAll(q[0], q[1], q[2]); const vent = Math.min(c.lv, c.rv), atr = Math.min(c.ra, c.la); return Math.abs(atr - vent) + (Math.min(c.ao, c.pt) < 0.02 ? 1 : 0); };
+  // lanza rayos hacia el corazón (así se alcanzan también los surcos cóncavos)
+  const rayHit = (o, rd) => {
+    let t = 0;
+    for (let i = 0; i < 90; i++) {
+      const p = add(o, mul(rd, t)); const d = sF(p[0], p[1], p[2]);
+      if (d < 0.002) return p;
+      t += Math.max(d * 0.85, 0.004);
+      if (t > 4) break;
+    }
+    return null;
+  };
+  const findGroove = (p0, dir, span, steps, metric, rd) => {
+    let best = null, bm = 1e9;
+    for (let i = 0; i <= steps; i++) {
+      const s = -span + (2 * span * i) / steps;
+      const q = rayHit(add(p0, mul(dir, s)), rd);
+      if (!q) continue;
+      const m = metric(q);
+      if (m < bm) { bm = m; best = q; }
+    }
+    return best;
+  };
+  const smoothPath = (pts, it) => {
+    for (let k = 0; k < (it || 2); k++) {
+      pts = pts.map((p, i) => (i === 0 || i === pts.length - 1) ? p : projectSurf(lerp3(lerp3(pts[i - 1], pts[i + 1], 0.5), p, 0.5), sF, 6));
+    }
+    return pts;
+  };
+  const lift = (pts, r) => pts.map(p => add(p, mul(gradF(sF, p), r * 0.2)));
+
+  // Descendente anterior (ADA) y descendente posterior
+  const lad = [], pda = [];
+  for (let t = 0.04; t <= 0.86; t += 0.07) {
+    const c = fw(0.18, -0.15 - 2.0 * t, 0);
+    lad.push(findGroove(add(c, mul(FZ, 1.6)), FX, 0.9, 40, metricLR, mul(FZ, -1)));
+    if (t > 0.08 && t < 0.72) pda.push(findGroove(add(c, mul(FZ, -1.6)), FX, 0.9, 40, metricLR, FZ));
+  }
+  lad.push(projectSurf(fw(0.2, -2.4, 0.2), sF, 14));
+  // Surco auriculoventricular
+  const cAV = fw(0.0, -0.02, 0);
+  const avPoint = (thDeg) => {
+    const th = thDeg * Math.PI / 180;
+    const dir = add(mul(FX, Math.cos(th)), mul(FZ, Math.sin(th)));
+    return findGroove(add(cAV, mul(dir, 1.7)), FY, 0.55, 30, metricAV, mul(dir, -1));
+  };
+  const cx = [], rca = [];
+  for (let th = 62; th >= -95; th -= 14) cx.push(avPoint(th));
+  for (let th = 112; th <= 262; th += 14) rca.push(avPoint(th));
+
+  // Ostium izquierdo y derecho en la raíz aórtica
+  const rootC = G.aoBulbC;
+  const oL = add(rootC, mul(norm([0.75, 0.05, -0.35]), 0.3));
+  const oR = add(rootC, mul(norm([-0.35, 0.05, 0.9]), 0.3));
+  const ladS = smoothPath(lad, 2), pdaS = smoothPath(pda, 2), cxS = smoothPath(cx, 2), rcaS = smoothPath(rca, 2);
+  const lmMid = projectSurf(lerp3(oL, ladS[0], 0.55), sF, 8);
+  const rMid = projectSurf(lerp3(oR, rcaS[0], 0.5), sF, 8);
+
+  const artMat = tissueMaterial({ color: linHex(PART.coronary.real), rough: 0.35, cc: 0.9, ccr: 0.15, bump: 0.003, freq: 40 });
+  const venMat = tissueMaterial({ color: linHex(0x4a3358), rough: 0.38, cc: 0.85, ccr: 0.18, bump: 0.003, freq: 40 });
+  artMat.userData.real = PART.coronary.real; artMat.userData.did = PART.coronary.did;
+  venMat.userData.real = 0x4a3358; venMat.userData.did = 0x3f6fe0;
+  const addTube = (pts, r, mat) => {
+    if (pts.length < 2) return;
+    const curve = new THREE.CatmullRomCurve3(pts.map(V3), false, 'centripetal');
+    const geo = new THREE.TubeGeometry(curve, Math.max(16, pts.length * 8), r, 10, false);
+    const m = new THREE.Mesh(geo, mat);
+    m.renderOrder = 3;
+    registerMesh('coronary', m);
+    return m;
+  };
+  const branch = (from, dir, n, step) => {
+    const pts = [from];
+    let p = from;
+    for (let i = 0; i < n; i++) { p = projectSurf(add(p, mul(dir, step)), sF, 8); pts.push(p); }
+    return smoothPath(pts, 1);
+  };
+  // Arterias
+  const L = lift([oL, lmMid, ...ladS], 0.04);
+  G.ladMid = L[Math.floor(L.length / 2)];
+  addTube(L, 0.036, artMat);
+  addTube(lift([ladS[0], ...cxS], 0.032), 0.032, artMat);
+  addTube(lift([oR, rMid, ...rcaS], 0.038), 0.038, artMat);
+  addTube(lift([rcaS[rcaS.length - 1], ...pdaS], 0.026), 0.026, artMat);
+  addTube(lift(branch(ladS[3], norm(add(mul(FX, 0.75), mul(AX, 0.9))), 7, 0.12), 0.022), 0.021, artMat);
+  addTube(lift(branch(ladS[6], norm(add(mul(FX, 0.7), mul(AX, 1.0))), 5, 0.12), 0.02), 0.018, artMat);
+  addTube(lift(branch(ladS[4], norm(add(mul(FX, -0.7), mul(AX, 0.8))), 4, 0.1), 0.016), 0.015, artMat);
+  addTube(lift(branch(cxS[Math.min(5, cxS.length - 1)], mul(FY, -1), 7, 0.13), 0.022), 0.022, artMat);
+  addTube(lift(branch(rcaS[Math.min(5, rcaS.length - 1)], mul(FY, -1), 6, 0.13), 0.022), 0.022, artMat);
+  // Venas (gran vena cardíaca + seno coronario + vena media)
+  const off = (pts, v) => smoothPath(pts.map(p => projectSurf(add(p, v), sF, 8)), 1);
+  addTube(lift(off([...ladS.slice(1, -1)].reverse().concat(cxS.slice(1)), mul(FX, 0.075)), 0.03), 0.028, venMat);
+  const cs = off(cxS.slice(-4), mul(FY, 0.07));
+  const csEnd = projectSurf([-0.62, 0.32, -0.42], sF, 10);
+  addTube(lift([...cs, csEnd], 0.06), 0.06, venMat);
+  addTube(lift(off(pdaS, mul(FX, 0.07)), 0.026), 0.024, venMat);
+}
+
+/* ---------- Pericardio ---------- */
+async function buildPericardium(bmin, bmax) {
+  USE_NOISE = false;
+  const F = (x, y, z) => solidF(x, y, z) - 0.13;
+  const { pos, idx } = await polygonize(F, [bmin[0] - 0.2, bmin[1] - 0.2, bmin[2] - 0.2], [bmax[0] + 0.2, 1.75, bmax[2] + 0.2], 0.06);
+  USE_NOISE = true;
+  const keep = [];
+  for (let t = 0; t < idx.length; t += 3) {
+    const cy = (pos[idx[t] * 3 + 1] + pos[idx[t + 1] * 3 + 1] + pos[idx[t + 2] * 3 + 1]) / 3;
+    if (cy < 1.55) keep.push(idx[t], idx[t + 1], idx[t + 2]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setIndex(keep);
+  g.computeVertexNormals();
+  g.computeBoundingSphere();
+  const m = new THREE.MeshPhysicalMaterial({ color: linHex(PART.pericardium.real), roughness: 0.3, clearcoat: 1, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false });
+  m.userData.colKey = 'pericardium';
+  const mesh = new THREE.Mesh(g, m);
+  mesh.renderOrder = 8;
+  mesh.userData.isPeri = true;
+  registerMesh('pericardium', mesh);
+}
+
+/* =========================================================
+   8. CORTE CON TAPAS SÓLIDAS (stencil)
+   ========================================================= */
+const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+let capMesh = null;
+function setupCaps() {
+  const mkStencil = (side, op) => {
+    const m = new THREE.MeshBasicMaterial();
+    m.depthWrite = false; m.depthTest = false; m.colorWrite = false;
+    m.stencilWrite = true; m.stencilFunc = THREE.AlwaysStencilFunc;
+    m.side = side; m.clippingPlanes = [clipPlane];
+    m.stencilFail = op; m.stencilZFail = op; m.stencilZPass = op;
+    m.onBeforeCompile = injectBeat;
+    return m;
+  };
+  const back = mkStencil(THREE.BackSide, THREE.IncrementWrapStencilOp);
+  const front = mkStencil(THREE.FrontSide, THREE.DecrementWrapStencilOp);
+  surfaceMeshes.forEach(mesh => {
+    const b = new THREE.Mesh(mesh.geometry, back); b.renderOrder = 1;
+    const f = new THREE.Mesh(mesh.geometry, front); f.renderOrder = 1;
+    b.userData.stencil = f.userData.stencil = true;
+    b.visible = f.visible = false;
+    mesh.add(b, f);
+    mesh.userData.stencils = [b, f];
+  });
+  const capMat = new THREE.MeshStandardMaterial({
+    color: linHex(0x6a1d1b), roughness: 0.6, metalness: 0,
+    stencilWrite: true, stencilRef: 0, stencilFunc: THREE.NotEqualStencilFunc,
+    stencilFail: THREE.ReplaceStencilOp, stencilZFail: THREE.ReplaceStencilOp, stencilZPass: THREE.ReplaceStencilOp,
+    side: THREE.DoubleSide
+  });
+  capMesh = new THREE.Mesh(new THREE.PlaneGeometry(9, 9), capMat);
+  capMesh.renderOrder = 2;
+  capMesh.onAfterRender = (r) => r.clearStencil();
+  capMesh.visible = false;
+  scene.add(capMesh);
+}
+
+/* =========================================================
+   9. FLUJO DE SANGRE (partículas)
+   ========================================================= */
+let flowSys = null;
+function buildFlow() {
+  const blueStart = [[-0.84, 2.45, 0.0], [-0.86, 1.7, -0.02], [-0.9, 1.0, -0.02], [-0.92, 0.72, 0.02]];
+  const ivcStart = [[-0.88, -0.72, -0.2], [-0.9, -0.05, -0.12], [-0.92, 0.45, -0.02], [-0.92, 0.72, 0.02]];
+  const rvPath = [G.T, G.triB, fw(-0.35, -1.0, 0.38), fw(-0.05, -0.5, 0.5), fw(0.25, -0.05, 0.53), G.Pv, [0.34, 1.15, 0.3], [0.32, 1.42, 0.0], G.bif];
+  const lpa = [[0.55, 1.54, -0.5], [0.95, 1.46, -0.62], [1.4, 1.38, -0.62]];
+  const rpa = [[-0.25, 1.5, -0.5], [-0.7, 1.45, -0.55], [-1.35, 1.4, -0.5]];
+  const lvPath = [G.M, G.mitB, fw(0.18, -1.6, 0.0), fw(0.05, -0.9, 0.12), G.lvotA, G.Rao];
+  const ao = G.aoPts.slice(1).concat([[0.47, 0.25, -1.28]]);
+  const brTop = AObr.map(b => { const p0 = b.curve.getPoint(0), p1 = b.curve.getPoint(1); return [[p0.x, p0.y, p0.z], [p1.x, p1.y + 0.12, p1.z]]; });
+  const pvIn = G.pvPts.map(p => [add(p[0], mul(norm(sub(p[0], p[2])), 0.12)), ...p, G.cLA]);
+  const paths = [
+    { c: 'b', p: [...blueStart, ...rvPath, ...lpa] },
+    { c: 'b', p: [...ivcStart, ...rvPath, ...rpa] },
+    { c: 'b', p: [...blueStart, ...rvPath, ...rpa] },
+    { c: 'r', p: [...pvIn[0], ...lvPath, ...ao] },
+    { c: 'r', p: [...pvIn[1], ...lvPath, ...G.aoPts.slice(1, 4), ...brTop[1]] },
+    { c: 'r', p: [...pvIn[2], ...lvPath, ...G.aoPts.slice(1, 3), ...brTop[0]] },
+    { c: 'r', p: [...pvIn[3], ...lvPath, ...ao] },
+    { c: 'r', p: [...pvIn[0], ...lvPath, ...G.aoPts.slice(1, 5), ...brTop[2]] }
+  ].map(o => ({ c: o.c, curve: new THREE.CatmullRomCurve3(o.p.map(V3), false, 'centripetal', 0.4) }));
+  const per = 26;
+  const geo = new THREE.SphereGeometry(0.032, 10, 8);
+  const mk = (hex) => new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: hex, depthTest: false, transparent: true, opacity: 0.95 }), paths.filter(p => p.c === (hex === 0x4f8cff ? 'b' : 'r')).length * per);
+  const blue = mk(0x4f8cff), red = mk(0xff4d4d);
+  blue.renderOrder = red.renderOrder = 20;
+  blue.frustumCulled = red.frustumCulled = false;
+  scene.add(blue, red);
+  const parts = [];
+  paths.forEach((p, pi) => { const L = p.curve.getLength(); for (let i = 0; i < per; i++) parts.push({ p, u: (i / per + pi * 0.037) % 1, L, jit: [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5].map(v => v * 0.07) }); });
+  flowSys = { blue, red, parts, visible: false };
+  blue.visible = red.visible = false;
+}
+const _v = new THREE.Vector3();
+function updateFlow(dt) {
+  if (!flowSys || !flowSys.visible) return;
+  let bi = 0, ri = 0;
+  const speed = state.slow ? 0.25 : 0.55;
+  flowSys.parts.forEach(pt => {
+    pt.u = (pt.u + (dt * speed) / pt.L) % 1;
+    pt.p.curve.getPointAt(pt.u, _v);
+    _v.x += pt.jit[0]; _v.y += pt.jit[1]; _v.z += pt.jit[2];
+    _v.applyMatrix4(heart.matrixWorld);
+    _m4.makeTranslation(_v.x, _v.y, _v.z);
+    if (pt.p.c === 'b') flowSys.blue.setMatrixAt(bi++, _m4); else flowSys.red.setMatrixAt(ri++, _m4);
+  });
+  flowSys.blue.instanceMatrix.needsUpdate = true;
+  flowSys.red.instanceMatrix.needsUpdate = true;
+}
+
+/* =========================================================
+   10. ETIQUETAS 3D
+   ========================================================= */
+const labelsEl = document.getElementById('labels');
+const lblCanvas = document.getElementById('lbl-canvas');
+const lctx = lblCanvas.getContext('2d');
+const anchors = [];
+function buildAnchors() {
+  const hints = {
+    ra: [-1.6, 0.75, 0.4], rv: [-0.3, -0.6, 1.8], la: [1.2, 0.95, 0.55], lv: [1.7, -0.9, 0.4],
+    ao: [-0.7, 1.3, 0.9], pt: [0.8, 1.15, 0.9], svc: [-1.3, 2.2, 0.3], ivc: [-1.5, -0.6, 0.2],
+    pv: [1.6, 1.0, -0.9], septum: lerp3(G.cLVc, G.cRV, 0.55)
+  };
+  Object.entries(hints).forEach(([id, h]) => {
+    const p = state.parts[id]; if (!p) return;
+    let best = null, bd = 1e9, bm = null;
+    p.meshes.forEach(m => {
+      const a = m.geometry.attributes.position;
+      if (!a) return;
+      for (let i = 0; i < a.count; i += 3) {
+        const dx = a.getX(i) - h[0], dy = a.getY(i) - h[1], dz = a.getZ(i) - h[2];
+        const d = dx * dx + dy * dy + dz * dz;
+        if (d < bd) { bd = d; best = [a.getX(i), a.getY(i), a.getZ(i)]; bm = m; }
+      }
+    });
+    if (best) anchors.push({ id, p: best, mesh: bm });
+  });
+  const vm = id => state.parts[id].meshes[0];
+  anchors.push({ id: 'mitral', p: add(G.M, mul(G.nM, 0.12)), mesh: vm('mitral') });
+  anchors.push({ id: 'tricuspid', p: add(G.T, mul(G.nT, 0.12)), mesh: vm('tricuspid') });
+  anchors.push({ id: 'aortic', p: G.Aov, mesh: vm('aortic') });
+  anchors.push({ id: 'pulmonary', p: G.Pv, mesh: vm('pulmonary') });
+  anchors.push({ id: 'papillary', p: G.papM[0], mesh: vm('papillary') });
+  if (G.ladMid) anchors.push({ id: 'coronary', p: G.ladMid, mesh: vm('coronary') });
+  anchors.push({ id: 'pericardium', p: [1.45, -0.6, 0.6], mesh: vm('pericardium') });
+  anchors.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'lbl';
+    el.innerHTML = `<span class="dot" style="background:${'#' + new THREE.Color(PART[a.id].did).getHexString()}"></span>${PART[a.id].name.replace(' (bicúspide)', '').replace('Cuerdas tendinosas y músculos papilares', 'Cuerdas tendinosas')}`;
+    el.addEventListener('click', () => selectPart(a.id, true));
+    labelsEl.appendChild(el);
+    a.el = el; a.local = V3(a.p); a.occluded = false;
+  });
+  [['Derecha del paciente', [-1.85, 0.2, 0.2]], ['Izquierda del paciente', [1.95, 0.2, 0.2]]].forEach(([t, p]) => {
+    const el = document.createElement('div'); el.className = 'lbl orient'; el.textContent = t; labelsEl.appendChild(el);
+    anchors.push({ id: null, el, local: V3(p), orient: true, mesh: heart });
+  });
+}
+const raycaster = new THREE.Raycaster();
+let occTimer = 0;
+const _w = new THREE.Vector3(), _c = new THREE.Vector3();
+function updateLabels(now) {
+  const W = window.innerWidth, Hh = window.innerHeight;
+  lctx.clearRect(0, 0, lblCanvas.width, lblCanvas.height);
+  if (!state.labels) { anchors.forEach(a => a.el.style.display = 'none'); return; }
+  const doOcc = now - occTimer > 220;
+  if (doOcc) occTimer = now;
+  _c.copy(TARGET).applyMatrix4(heart.matrixWorld).project(camera);
+  const cxs = (_c.x * 0.5 + 0.5) * W, cys = (-_c.y * 0.5 + 0.5) * Hh;
+  const dpr = lblCanvas.width / W;
+  lctx.lineWidth = 1.2 * dpr;
+  anchors.forEach(a => {
+    const part = a.id ? state.parts[a.id] : null;
+    const visible = a.orient || (part && part.visible);
+    if (!visible) { a.el.style.display = 'none'; return; }
+    _w.copy(a.local); a.mesh.localToWorld(_w);
+    if (a.orient) _w.copy(a.local).applyMatrix4(heart.matrixWorld);
+    const world = _w.clone();
+    _w.project(camera);
+    if (_w.z > 1 || _w.z < -1) { a.el.style.display = 'none'; return; }
+    const sx = (_w.x * 0.5 + 0.5) * W, sy = (-_w.y * 0.5 + 0.5) * Hh;
+    a.el.style.display = 'block';
+    if (a.orient) { a.el.style.left = sx + 'px'; a.el.style.top = sy + 'px'; return; }
+    if (doOcc) {
+      const dir = world.clone().sub(camera.position); const dist = dir.length(); dir.normalize();
+      raycaster.set(camera.position, dir); raycaster.far = dist + 0.01;
+      const hits = raycaster.intersectObjects(visiblePickables(), false).filter(h => !state.cut || clipPlane.distanceToPoint(h.point) >= -0.002);
+      const h0 = hits[0];
+      a.occluded = !!(h0 && h0.distance < dist - 0.06 && h0.object.userData.partId !== a.id && !(state.xray));
+    }
+    let dx = sx - cxs, dy = sy - cys; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    const off = 46;
+    const lx = sx + dx * off, ly = sy + dy * off * 0.75;
+    a.el.style.left = lx + 'px'; a.el.style.top = ly + 'px';
+    a.el.classList.toggle('dim', a.occluded);
+    lctx.strokeStyle = a.occluded ? 'rgba(255,255,255,0.18)' : (document.body.classList.contains('light') ? 'rgba(20,32,51,0.6)' : 'rgba(255,255,255,0.75)');
+    lctx.fillStyle = lctx.strokeStyle;
+    lctx.beginPath(); lctx.moveTo(sx * dpr, sy * dpr); lctx.lineTo(lx * dpr, ly * dpr); lctx.stroke();
+    lctx.beginPath(); lctx.arc(sx * dpr, sy * dpr, 2.6 * dpr, 0, Math.PI * 2); lctx.fill();
+  });
+}
+
+/* =========================================================
+   11. INTERACCIÓN Y ESTADO VISUAL
+   ========================================================= */
+function visiblePickables() { return allPickables.filter(m => m.visible && state.parts[m.userData.partId].visible); }
+function applyColors() {
+  Object.values(state.parts).forEach(p => p.meshes.forEach(m => {
+    const mat = m.material;
+    if (m.userData.vc) {
+      const src = state.mode === 'real' ? m.geometry.userData.colR : m.geometry.userData.colD;
+      m.geometry.attributes.color.array.set(src);
+      m.geometry.attributes.color.needsUpdate = true;
+      mat.clearcoat = state.mode === 'real' ? mat.userData.base.cc : 0.35;
+      mat.roughness = state.mode === 'real' ? mat.userData.base.rough : 0.55;
+    } else if (mat.userData.real !== undefined) {
+      mat.color.copy(linHex(state.mode === 'real' ? mat.userData.real : mat.userData.did));
+    } else if (m.userData.colKey) {
+      const P = PART[m.userData.colKey];
+      if (m.userData.colKey === 'papillary' && state.mode === 'real') mat.color.copy(linHex(0xf3ead8));
+      else mat.color.copy(linHex(state.mode === 'real' ? P.real : P.did));
+    }
+  }));
+  if (capMesh) capMesh.material.color.copy(linHex(state.mode === 'real' ? 0x6a1d1b : 0xb98aa0));
+}
+function applyXray() {
+  Object.values(state.parts).forEach(p => p.meshes.forEach(m => {
+    if (m.userData.isPeri) return;
+    const mat = m.material;
+    mat.transparent = state.xray;
+    mat.opacity = state.xray ? 0.22 : 1;
+    mat.depthWrite = !state.xray;
+    mat.needsUpdate = true;
+  }));
+  updateCaps();
+}
+function applyHighlight() {
+  Object.values(state.parts).forEach(p => {
+    const on = p.highlight || state.selected === p.id;
+    p.meshes.forEach(m => {
+      const mat = m.material;
+      if (!mat.emissive) return;
+      mat.emissive.setHex(on ? (p.highlight ? 0xffc23a : 0x3a7bff) : 0x000000);
+      mat.emissiveIntensity = on ? (p.highlight ? 0.55 : 0.42) : 0;
+    });
+  });
+}
+function setPartVisible(id, v) {
+  const p = state.parts[id]; p.visible = v;
+  p.meshes.forEach(m => m.visible = v);
+  if (id === 'pericardium') document.getElementById('t-peri').checked = v;
+  updateCaps();
+}
+function updateCaps() {
+  if (!capMesh) return;
+  const allVis = ['lv', 'rv', 'ra', 'la', 'septum', 'ao', 'pt', 'svc', 'ivc', 'pv', 'papillary'].every(id => !state.parts[id] || state.parts[id].visible);
+  const on = !!state.cut && !state.xray && state.explode < 0.01 && allVis;
+  capMesh.visible = on;
+  surfaceMeshes.forEach(m => m.userData.stencils.forEach(s => s.visible = on));
+}
+function applyClipping() {
+  Object.values(state.parts).forEach(p => p.meshes.forEach(m => {
+    if (m.userData.isPeri) { m.material.clippingPlanes = state.cut ? [clipPlane] : []; m.material.needsUpdate = true; return; }
+    m.material.clippingPlanes = state.cut ? [clipPlane] : [];
+    m.material.needsUpdate = true;
+  }));
+  updateCaps();
+}
+function applyExplode() {
+  const c = V3([0.15, 0.45, -0.15]);
+  Object.values(state.parts).forEach(p => {
+    if (!p.explodeDir) {
+      const box = new THREE.Box3();
+      p.meshes.forEach(m => { m.geometry.computeBoundingBox(); if (m.geometry.boundingBox) box.union(m.geometry.boundingBox.clone().applyMatrix4(m.matrix)); });
+      const ctr = box.getCenter(new THREE.Vector3());
+      p.explodeDir = ctr.sub(c);
+      if (p.explodeDir.length() < 0.15) p.explodeDir.set(0, 0, 0.6);
+      p.explodeDir.normalize();
+      if (p.id === 'coronary' || p.id === 'pericardium') p.explodeDir.set(0, 0, 0);
+    }
+    const k = { valve: 1.1 }[p.group] || 0.9;
+    p.meshes.forEach(m => m.position.copy(p.explodeDir).multiplyScalar(state.explode * k));
+  });
+  updateCaps();
+}
+
+// --- Corte ---
+function cutNormalFor(type) {
+  if (type === '4c') {
+    // plano que contiene el ápice, el centro de las aurículas y el eje derecha-izquierda
+    const apex = fw(0.18, -1.75, 0.05);
+    const atria = lerp3(G.cRA, G.cLA, 0.5);
+    const lr = sub(G.cLVc, fw(-0.55, -0.6, 0.4));
+    let n = norm(cross(sub(atria, apex), lr));
+    if (n[2] < 0) n = mul(n, -1);
+    return { n, p0: lerp3(apex, atria, 0.5) };
+  }
+  const p0 = [0.1, 0.35, -0.05];
+  if (type === 'coronal') return { n: [0, 0, 1], p0: [0.1, 0.35, 0.0] };
+  if (type === 'sagital') return { n: [-1, 0, 0], p0: [0.05, 0.35, 0] };
+  return { n: [0, 1, 0], p0: [0.1, 0.0, 0] };
+}
+function setCut(type, moveCam) {
+  if (!type) {
+    state.cut = null;
+    document.querySelectorAll('#cut-presets .chipbtn').forEach(b => b.classList.remove('on'));
+    applyClipping();
+    return;
+  }
+  const { n, p0 } = cutNormalFor(type);
+  state.cut = { type, n: V3(n), p0: V3(p0) };
+  document.querySelectorAll('#cut-presets .chipbtn').forEach(b => b.classList.toggle('on', b.dataset.cut === type));
+  updateCutPlane();
+  applyClipping();
+  if (moveCam) {
+    const dir = state.cut.n.clone().multiplyScalar(state.cutFlip);
+    if (type === 'axial') dir.add(new THREE.Vector3(0, 0, 0.35)).normalize();
+    flyTo(TARGET.clone().add(dir.multiplyScalar(7.6)), TARGET);
+  }
+}
+function updateCutPlane() {
+  if (!state.cut) return;
+  const n = state.cut.n.clone().multiplyScalar(state.cutFlip);
+  const p = state.cut.p0.clone().addScaledVector(state.cut.n, state.cutOffset);
+  clipPlane.normal.copy(n).negate();
+  clipPlane.constant = n.dot(p);
+  if (capMesh) {
+    capMesh.position.copy(p);
+    capMesh.lookAt(p.clone().add(n));
+  }
+}
+
+// --- Cámara ---
+let fly = null;
+function flyTo(pos, target, dur) {
+  fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: target.clone(), s: performance.now(), d: dur || 900 };
+}
+function view(name) {
+  const t = TARGET.clone(), d = 8.6;
+  const P = { front: [0.15, 0.25, 1], back: [-0.1, 0.2, -1], left: [1, 0.15, 0.1], right: [-1, 0.15, 0.15], top: [0.05, 1, 0.25] }[name] || [0.15, 0.25, 1];
+  flyTo(t.clone().add(V3(norm(P)).multiplyScalar(d)), t);
+}
+
+// --- Selección ---
+function selectPart(id, focus) {
+  state.selected = id;
+  applyHighlight();
+  renderParts();
+  const P = PART[id];
+  document.getElementById('i-title').textContent = P.name;
+  document.getElementById('i-group').textContent = P.group;
+  const o2 = document.getElementById('i-o2');
+  if (P.o2) { o2.style.display = ''; o2.className = 'badge ' + (P.o2 === 'r' ? 'o2r' : 'o2b'); o2.textContent = P.o2 === 'r' ? 'Sangre rica en O₂' : 'Sangre pobre en O₂'; }
+  else o2.style.display = 'none';
+  document.getElementById('i-desc').textContent = P.desc;
+  document.getElementById('i-fact').innerHTML = P.fact;
+  if (focus && P.internal && !state.cut && !state.xray) {
+    setCut('4c', true);
+    showToast('Se activó el corte de 4 cámaras para ver la estructura');
+  }
+}
+function clearSelection() {
+  state.selected = null; applyHighlight(); renderParts();
+}
+
+// --- Lista de partes ---
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/></svg>';
+let isolated = null;
+function renderParts() {
+  const box = document.getElementById('tab-parts');
+  box.innerHTML = '';
+  GROUPS.forEach(g => {
+    const t = document.createElement('div'); t.className = 'group-title'; t.textContent = g; box.appendChild(t);
+    PARTS.filter(p => p.group === g).forEach(P => {
+      const p = state.parts[P.id]; if (!p) return;
+      const row = document.createElement('div');
+      row.className = 'part' + (state.selected === P.id ? ' sel' : '') + (p.visible ? '' : ' off');
+      const nm = document.createElement('button'); nm.className = 'nm';
+      const col = '#' + new THREE.Color(state.mode === 'real' && !P.internal ? P.real : P.did).getHexString();
+      nm.innerHTML = `<i class="dot" style="background:${col}"></i><span>${P.name}</span>`;
+      nm.onclick = () => selectPart(P.id, true);
+      const iso = document.createElement('button'); iso.className = 'ib' + (isolated === P.id ? ' on' : ''); iso.textContent = isolated === P.id ? 'Todo' : 'Solo';
+      iso.title = 'Ver solo esta parte';
+      iso.onclick = () => {
+        if (isolated === P.id) { isolated = null; Object.keys(state.parts).forEach(id => setPartVisible(id, !PART[id].startHidden || id === 'pericardium' && document.getElementById('t-peri').checked)); }
+        else { isolated = P.id; Object.keys(state.parts).forEach(id => setPartVisible(id, id === P.id)); selectPart(P.id, false); }
+        renderParts();
+      };
+      const eye = document.createElement('button'); eye.className = 'ib'; eye.innerHTML = p.visible ? EYE : EYE_OFF; eye.title = p.visible ? 'Ocultar' : 'Mostrar';
+      eye.onclick = () => { isolated = null; setPartVisible(P.id, !p.visible); renderParts(); };
+      row.append(nm, iso, eye);
+      box.appendChild(row);
+    });
+  });
+  const all = document.createElement('div'); all.className = 'navrow';
+  const showAll = document.createElement('button'); showAll.className = 'chipbtn'; showAll.textContent = 'Mostrar todo';
+  showAll.onclick = () => { isolated = null; Object.keys(state.parts).forEach(id => { if (id !== 'pericardium') setPartVisible(id, true); }); renderParts(); };
+  all.appendChild(showAll); box.appendChild(all);
+}
+
+// --- Recorrido ---
+let routeIdx = -1;
+function renderRoute() {
+  const box = document.getElementById('tab-route');
+  box.innerHTML = '<div class="lungs" style="margin-top:2px">La sangre hace <b>dos circuitos</b>: la <b style="color:#6fa0ff">circulación menor</b> (corazón → pulmones → corazón) y la <b style="color:#ff6b6b">circulación mayor</b> (corazón → cuerpo → corazón). Toca cada paso.</div>';
+  ROUTE.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'step' + (routeIdx === i ? ' on' : '');
+    b.innerHTML = `<span class="n" style="background:${s.c === 'r' ? '#e5484d' : '#3b6fe0'}">${i + 1}</span><span><div class="t">${s.t}</div><div class="d">${s.d}</div></span>`;
+    b.onclick = () => goStep(i);
+    box.appendChild(b);
+    if (s.lungs) {
+      const l = document.createElement('div'); l.className = 'lungs';
+      l.innerHTML = '🫁 <b>En los pulmones</b> la sangre suelta dióxido de carbono (CO₂) y toma oxígeno (O₂). Cambia de pobre a <b style="color:#ff6b6b">rica en oxígeno</b>.';
+      box.appendChild(l);
+    }
+  });
+  const nav = document.createElement('div'); nav.className = 'navrow';
+  const prev = document.createElement('button'); prev.className = 'chipbtn'; prev.textContent = '← Anterior'; prev.onclick = () => goStep(Math.max(0, routeIdx - 1));
+  const next = document.createElement('button'); next.className = 'chipbtn on'; next.textContent = routeIdx < 0 ? 'Comenzar' : 'Siguiente →'; next.onclick = () => goStep(Math.min(ROUTE.length - 1, routeIdx + 1));
+  nav.append(prev, next); box.appendChild(nav);
+}
+function goStep(i) {
+  routeIdx = i;
+  const s = ROUTE[i];
+  Object.values(state.parts).forEach(p => p.highlight = s.parts.includes(p.id));
+  selectPart(s.parts[0], false);
+  if (s.cut) { if (!state.cut || state.cut.type !== '4c') setCut('4c', true); }
+  else { if (state.cut) setCut(null); view(['pv'].includes(s.parts[0]) ? 'back' : 'front'); }
+  applyHighlight();
+  renderRoute();
+}
+
+// --- Práctica ---
+const quiz = { qs: [], i: 0, score: 0, answered: false };
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function startQuiz() {
+  const idParts = shuffle(PARTS.filter(p => p.id !== 'pericardium').map(p => p.id)).slice(0, 5);
+  const ids = idParts.map(id => {
+    const same = PARTS.filter(p => p.id !== id && p.id !== 'pericardium');
+    const sameGroup = shuffle(same.filter(p => p.group === PART[id].group));
+    const others = shuffle(same.filter(p => p.group !== PART[id].group));
+    return { kind: 'id', a: id, o: [...sameGroup, ...others].slice(0, 3).map(p => p.id) };
+  });
+  const fn = shuffle(QUIZ_FN.slice()).slice(0, 5).map(q => ({ kind: 'fn', ...q }));
+  quiz.qs = shuffle([...ids, ...fn]);
+  quiz.i = 0; quiz.score = 0; quiz.answered = false;
+  showQuestion();
+}
+function showQuestion() {
+  const box = document.getElementById('tab-quiz');
+  const q = quiz.qs[quiz.i];
+  Object.values(state.parts).forEach(p => p.highlight = false);
+  if (q.kind === 'id') {
+    state.parts[q.a].highlight = true;
+    if (!state.parts[q.a].visible) setPartVisible(q.a, true);
+    if (PART[q.a].internal || q.a === 'septum') { if (!state.cut) setCut('4c', true); }
+    else if (q.a === 'pv' || q.a === 'la') { if (state.cut) setCut(null); view('back'); }
+    else { if (state.cut) setCut(null); view('front'); }
+  }
+  state.selected = null;
+  applyHighlight(); renderParts();
+  const opts = shuffle([q.a, ...q.o]);
+  box.innerHTML = `
+    <div class="score"><span>Pregunta ${quiz.i + 1} de ${quiz.qs.length}</span><span>Puntos: ${quiz.score}</span></div>
+    <div class="bar"><i style="width:${(quiz.i / quiz.qs.length) * 100}%"></i></div>
+    <div class="quiz-q">${q.kind === 'id' ? '¿Cómo se llama la estructura resaltada en <span style="color:#ffc23a">amarillo</span>?' : q.q}</div>
+    <div id="q-opts"></div><div class="quiz-fb" id="q-fb"></div>`;
+  const oBox = box.querySelector('#q-opts');
+  opts.forEach(id => {
+    const b = document.createElement('button'); b.className = 'opt'; b.textContent = PART[id].name;
+    b.onclick = () => answer(id, b, oBox);
+    oBox.appendChild(b);
+  });
+  quiz.answered = false;
+  if (state.labels) { state.labels = false; quiz.hidLabels = true; document.getElementById('t-labels').checked = false; }
+}
+function answer(id, btn, oBox) {
+  if (quiz.answered) return;
+  quiz.answered = true;
+  const q = quiz.qs[quiz.i];
+  const ok = id === q.a;
+  if (ok) quiz.score++;
+  [...oBox.children].forEach(b => { if (b.textContent === PART[q.a].name) b.classList.add('ok'); });
+  if (!ok) btn.classList.add('bad');
+  const fb = document.getElementById('q-fb');
+  fb.innerHTML = (ok ? '<b style="color:var(--ok)">¡Correcto!</b> ' : `<b style="color:var(--bad)">Casi.</b> Era <b>${PART[q.a].name}</b>. `) + PART[q.a].desc;
+  Object.values(state.parts).forEach(p => p.highlight = false);
+  selectPart(q.a, q.kind === 'fn');
+  const nx = document.createElement('button'); nx.className = 'primary'; nx.textContent = quiz.i < quiz.qs.length - 1 ? 'Siguiente pregunta' : 'Ver resultado';
+  nx.onclick = () => { quiz.i++; if (quiz.i < quiz.qs.length) showQuestion(); else endQuiz(); };
+  document.getElementById('tab-quiz').appendChild(nx);
+}
+function endQuiz() {
+  const box = document.getElementById('tab-quiz');
+  const pct = Math.round((quiz.score / quiz.qs.length) * 100);
+  const msg = pct >= 90 ? '¡Excelente! Dominas la anatomía del corazón.' : pct >= 70 ? '¡Muy bien! Repasa las partes que fallaste.' : 'Sigue practicando: usa el recorrido y las etiquetas para repasar.';
+  box.innerHTML = `<div class="quiz-q" style="font-size:22px;text-align:center;margin-top:14px">${quiz.score} / ${quiz.qs.length}</div>
+    <div class="bar"><i style="width:${pct}%"></i></div>
+    <p class="quiz-fb" style="text-align:center">${msg}</p>`;
+  const b = document.createElement('button'); b.className = 'primary'; b.textContent = 'Intentar de nuevo'; b.onclick = startQuiz;
+  box.appendChild(b);
+  if (quiz.hidLabels) { state.labels = true; document.getElementById('t-labels').checked = true; quiz.hidLabels = false; }
+}
+function renderQuizIntro() {
+  const box = document.getElementById('tab-quiz');
+  box.innerHTML = `<div class="quiz-q">Pon a prueba lo que sabes</div>
+    <p class="quiz-fb">10 preguntas: identificar estructuras resaltadas en el modelo y preguntas sobre su función. Las etiquetas se ocultan mientras respondes.</p>`;
+  const b = document.createElement('button'); b.className = 'primary'; b.textContent = 'Comenzar práctica'; b.onclick = startQuiz;
+  box.appendChild(b);
+}
+
+// --- Marcadores ---
+const pinsLayer = document.getElementById('labels');
+function addPin(hit) {
+  const id = hit.object.userData.partId;
+  const local = hit.object.worldToLocal(hit.point.clone());
+  const el = document.createElement('div'); el.className = 'pin';
+  el.innerHTML = `<b>${state.pins.length + 1} · ${PART[id].name}</b><i></i>`;
+  pinsLayer.appendChild(el);
+  state.pins.push({ el, local, mesh: hit.object });
+}
+function updatePins() {
+  state.pins.forEach(p => {
+    _w.copy(p.local); p.mesh.localToWorld(_w); _w.project(camera);
+    if (_w.z > 1 || !p.mesh.visible) { p.el.style.display = 'none'; return; }
+    p.el.style.display = 'block';
+    p.el.style.left = ((_w.x * 0.5 + 0.5) * window.innerWidth) + 'px';
+    p.el.style.top = ((-_w.y * 0.5 + 0.5) * window.innerHeight) + 'px';
+  });
+}
+
+// --- Lápiz ---
+const pen = document.getElementById('pen-canvas'); const pctx = pen.getContext('2d');
+let drawing = null;
+function redrawPen() {
+  const dpr = pen.width / window.innerWidth;
+  pctx.clearRect(0, 0, pen.width, pen.height);
+  state.strokes.forEach(s => {
+    if (s.pts.length < 2) return;
+    pctx.strokeStyle = s.c; pctx.lineWidth = s.w * dpr; pctx.lineCap = 'round'; pctx.lineJoin = 'round';
+    pctx.beginPath(); pctx.moveTo(s.pts[0][0] * dpr, s.pts[0][1] * dpr);
+    s.pts.forEach(p => pctx.lineTo(p[0] * dpr, p[1] * dpr)); pctx.stroke();
+  });
+}
+pen.addEventListener('pointerdown', e => { drawing = { c: state.penColor, w: state.penSize, pts: [[e.clientX, e.clientY]] }; state.strokes.push(drawing); });
+pen.addEventListener('pointermove', e => { if (!drawing) return; drawing.pts.push([e.clientX, e.clientY]); redrawPen(); });
+window.addEventListener('pointerup', () => drawing = null);
+
+// --- Clic sobre el modelo ---
+const ndc = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  ndc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera); raycaster.far = Infinity;
+  const hits = raycaster.intersectObjects(visiblePickables(), false).filter(h => !state.cut || clipPlane.distanceToPoint(h.point) >= -0.002);
+  const pick = state.xray ? hits.find(h => !h.object.userData.isPeri) || hits[0] : hits[0];
+  if (!pick) { clearSelection(); return; }
+  if (state.tool === 'pin') addPin(pick);
+  selectPart(pick.object.userData.partId, false);
+});
+
+// --- Herramientas ---
+function setTool(t) {
+  state.tool = t;
+  document.querySelectorAll('.tool').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  pen.classList.toggle('on', t === 'pen');
+  controls.enabled = t !== 'pen';
+  const sp = document.getElementById('subpanel');
+  ['cut', 'pen', 'pin'].forEach(k => document.getElementById('sp-' + k).style.display = k === t ? '' : 'none');
+  sp.style.display = t === 'orbit' ? 'none' : 'block';
+  if (t === 'cut' && !state.cut) setCut('4c', true);
+}
+document.querySelectorAll('.tool').forEach(b => b.onclick = () => setTool(b.dataset.tool === state.tool && b.dataset.tool !== 'orbit' ? 'orbit' : b.dataset.tool));
+document.querySelectorAll('#cut-presets .chipbtn').forEach(b => b.onclick = () => { state.cutOffset = 0; document.getElementById('cut-slider').value = 0; document.getElementById('cut-val').textContent = '0.00'; setCut(b.dataset.cut, true); });
+document.getElementById('cut-slider').oninput = e => { state.cutOffset = parseFloat(e.target.value); document.getElementById('cut-val').textContent = state.cutOffset.toFixed(2); if (!state.cut) setCut('4c', false); updateCutPlane(); };
+document.getElementById('cut-flip').onclick = () => { state.cutFlip *= -1; if (state.cut) { updateCutPlane(); setCut(state.cut.type, true); } };
+document.getElementById('cut-off').onclick = () => setCut(null);
+document.querySelectorAll('#pen-colors .sw').forEach(b => b.onclick = () => { state.penColor = b.dataset.c; document.querySelectorAll('#pen-colors .sw').forEach(x => x.classList.toggle('on', x === b)); });
+document.getElementById('pen-size').oninput = e => { state.penSize = +e.target.value; document.getElementById('pen-size-val').textContent = state.penSize + ' px'; };
+document.getElementById('pen-undo').onclick = () => { state.strokes.pop(); redrawPen(); };
+document.getElementById('pen-clear').onclick = () => { state.strokes = []; redrawPen(); };
+document.getElementById('pin-clear').onclick = () => { state.pins.forEach(p => p.el.remove()); state.pins = []; };
+
+// --- Panel ---
+document.querySelectorAll('#color-mode button').forEach(b => b.onclick = () => {
+  state.mode = b.dataset.mode;
+  document.querySelectorAll('#color-mode button').forEach(x => x.classList.toggle('on', x === b));
+  applyColors(); renderParts();
+});
+document.getElementById('t-labels').onchange = e => { state.labels = e.target.checked; };
+let xrayBeforeFlow = false;
+document.getElementById('t-xray').onchange = e => { state.xray = e.target.checked; applyXray(); };
+document.getElementById('t-flow').onchange = e => {
+  state.flow = e.target.checked;
+  flowSys.visible = state.flow; flowSys.blue.visible = flowSys.red.visible = state.flow;
+  if (state.flow) { xrayBeforeFlow = state.xray; if (!state.xray) { state.xray = true; document.getElementById('t-xray').checked = true; applyXray(); } showToast('Azul: sangre pobre en O₂ · Rojo: sangre rica en O₂'); }
+  else if (!xrayBeforeFlow && state.xray) { state.xray = false; document.getElementById('t-xray').checked = false; applyXray(); }
+};
+document.getElementById('t-peri').onchange = e => { setPartVisible('pericardium', e.target.checked); renderParts(); };
+document.getElementById('ex-slider').oninput = e => { state.explode = +e.target.value; document.getElementById('ex-val').textContent = Math.round(state.explode * 100) + '%'; applyExplode(); };
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x === b));
+  ['parts', 'route', 'quiz'].forEach(t => document.getElementById('tab-' + t).style.display = t === b.dataset.tab ? '' : 'none');
+  if (b.dataset.tab !== 'route') { Object.values(state.parts).forEach(p => p.highlight = false); applyHighlight(); }
+  if (b.dataset.tab !== 'quiz' && quiz.hidLabels) { state.labels = true; quiz.hidLabels = false; document.getElementById('t-labels').checked = true; }
+  if (b.dataset.tab === 'quiz') renderQuizIntro();
+});
+
+// --- Barra superior ---
+document.getElementById('b-beat').onclick = e => { state.beating = !state.beating; e.currentTarget.classList.toggle('on', state.beating); document.getElementById('phase').style.display = state.beating ? '' : 'none'; };
+document.getElementById('b-slow').onclick = e => { state.slow = !state.slow; e.currentTarget.classList.toggle('on', state.slow); document.getElementById('slow-txt').textContent = state.slow ? 'Lento' : 'Normal'; };
+document.getElementById('b-rot').onclick = e => { controls.autoRotate = !controls.autoRotate; e.currentTarget.classList.toggle('on', controls.autoRotate); };
+document.getElementById('b-reset').onclick = () => view('front');
+document.getElementById('b-theme').onclick = () => document.body.classList.toggle('light');
+document.getElementById('b-panel').onclick = () => { document.getElementById('panel').classList.toggle('hide'); document.body.classList.toggle('panel-hidden'); resize(); };
+document.querySelectorAll('#views .btn').forEach(b => b.onclick = () => view(b.dataset.view));
+window.addEventListener('keydown', e => { if ((e.key === 'r' || e.key === 'R') && !/INPUT|SELECT/.test(document.activeElement.tagName)) view('front'); });
+
+function showToast(m) {
+  const t = document.getElementById('toast'); t.textContent = m; t.style.display = 'block';
+  clearTimeout(showToast.h); showToast.h = setTimeout(() => t.style.display = 'none', 2600);
+}
+function resize() {
+  const W = window.innerWidth, Hh = window.innerHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  // desplaza el centro de la vista para que el panel derecho no tape el corazón
+  const P = (document.getElementById('panel').classList.contains('hide') || W < 860) ? 0 : 330;
+  camera.aspect = (W + P) / Hh;
+  if (P) camera.setViewOffset(W + P, Hh, P, 0, W, Hh); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  renderer.setSize(W, Hh);
+  [lblCanvas, pen].forEach(c => { c.width = W * dpr; c.height = Hh * dpr; c.style.width = W + 'px'; c.style.height = Hh + 'px'; });
+  redrawPen();
+}
+window.addEventListener('resize', resize);
+
+/* =========================================================
+   12. CICLO CARDÍACO Y BUCLE DE ANIMACIÓN
+   ========================================================= */
+const clock = new THREE.Clock();
+let phaseT = 0.6;
+function cycle(ph) {
+  const atr = ph < 0.13 ? Math.sin((ph / 0.13) * Math.PI) : 0;
+  const sys = sstep(0.12, 0.2, ph) * (1 - sstep(0.42, 0.54, ph));
+  const av = 1 - sstep(0.1, 0.14, ph) * (1 - sstep(0.52, 0.58, ph));
+  const sl = sstep(0.19, 0.24, ph) * (1 - sstep(0.4, 0.46, ph));
+  return { atr, sys, av, sl };
+}
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const now = performance.now();
+  if (fly) {
+    const t = clamp((now - fly.s) / fly.d, 0, 1), k = t * t * (3 - 2 * t);
+    camera.position.lerpVectors(fly.p0, fly.p1, k);
+    controls.target.lerpVectors(fly.t0, fly.t1, k);
+    if (t >= 1) fly = null;
+  }
+  let c;
+  if (state.beating) {
+    phaseT = (phaseT + dt / (state.slow ? 2.6 : 60 / 72)) % 1;
+    c = cycle(phaseT);
+    const txt = phaseT < 0.12 ? 'Sístole auricular · las aurículas se contraen' : phaseT < 0.5 ? 'Sístole ventricular · los ventrículos bombean' : 'Diástole · el corazón se relaja y se llena';
+    const pt = document.getElementById('phase-txt'); if (pt.textContent !== txt) pt.textContent = txt;
+    document.getElementById('phase-dot').style.transform = `scale(${1 + c.sys * 0.6 + c.atr * 0.3})`;
+  } else c = { atr: 0, sys: 0, av: 1, sl: 0 };
+  BEAT.uSys.value = c.sys; BEAT.uAtr.value = c.atr;
+  animatedValves.forEach(v => v.update(v.cfg.type === 'av' ? c.av : c.sl));
+  updateChordae();
+  updateFlow(dt);
+  controls.update();
+  renderer.render(scene, camera);
+  updateLabels(now);
+  updatePins();
+}
+
+/* =========================================================
+   13. INICIO
+   ========================================================= */
+resize();
+camera.position.copy(TARGET.clone().add(V3(norm([0.15, 0.25, 1])).multiplyScalar(8.6)));
+controls.target.copy(TARGET);
+controls.update();
+animate();
+buildHeart().then(() => {
+  buildFlow();
+  applyColors();
+  applyClipping();
+  applyHighlight();
+  renderParts();
+  renderRoute();
+  renderQuizIntro();
+  setTool('orbit');
+  document.getElementById('loading').style.display = 'none';
+  if (window.innerWidth < 860) { document.getElementById('panel').classList.add('hide'); document.body.classList.add('panel-hidden'); }
+  resize();
+  window.__dbg = { camera, controls, state, view, setCut, flyTo, TARGET, heart, G };
+}).catch(err => {
+  console.error(err);
+  document.getElementById('load-msg').textContent = 'Error al construir el modelo: ' + err.message;
+});
+</script>
+</body>
+</html>
