@@ -153,6 +153,8 @@
   #info .desc { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; }
   #info .fact { margin: 6px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
   #info .fact b { color: var(--text); }
+  body.clean #labels, body.clean #phase, body.clean #tools, body.clean #subpanel, body.clean #info, body.clean #views, body.clean #panel, body.clean #lbl-canvas { display: none !important; }
+  #info .h, #labels { -webkit-user-select: none; user-select: none; }
   #i-more { display: none; margin-left: auto; padding: 4px 10px; border-radius: 999px; background: var(--chip); color: var(--text); font-size: 11.5px; font-weight: 700; }
   #views { position: absolute; bottom: 12px; right: 354px; z-index: 19; display: flex; gap: 2px; padding: 4px; }
   #views .btn { padding: 6px 9px; }
@@ -198,6 +200,8 @@
       <button class="btn" id="b-slow" title="Velocidad del latido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg><span id="slow-txt">Normal</span></button>
       <button class="btn" id="b-rot" title="Girar solo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h5M20 20v-5h-5M5.5 15a7.5 7.5 0 0 0 13 2M18.5 9a7.5 7.5 0 0 0-13-2"/></svg><span>Girar</span></button>
       <button class="btn" id="b-reset" title="Centrar (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg><span>Centrar</span></button>
+      <button class="btn" id="b-clean" title="Vista limpia: ocultar etiquetas y textos" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/><path d="M12 17s-4-2.5-5-5c-.6-1.6.4-3.5 2.2-3.5 1.1 0 2 .6 2.8 1.5.8-.9 1.7-1.5 2.8-1.5 1.8 0 2.8 1.9 2.2 3.5-1 2.5-5 5-5 5z"/></svg><span>Limpia</span></button>
+      <button class="btn on" id="b-voice" title="Leer en voz alta al tocar una parte" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg><span>Voz</span></button>
       <button class="btn" id="b-theme" title="Modo claro/oscuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 15A8 8 0 1 1 9 4a6.5 6.5 0 0 0 11 11z"/></svg></button>
       <button class="btn" id="b-panel" title="Mostrar/ocultar panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg><span>Panel</span></button>
     </div>
@@ -1569,7 +1573,7 @@ function buildAnchors() {
     const el = document.createElement('div');
     el.className = 'lbl';
     el.innerHTML = `<span class="dot" style="background:${'#' + new THREE.Color(PART[a.id].did).getHexString()}"></span>${PART[a.id].name.replace(' (bicúspide)', '').replace('Cuerdas tendinosas y músculos papilares', 'Cuerdas tendinosas')}`;
-    el.addEventListener('click', () => selectPart(a.id, true));
+    el.addEventListener('click', () => { selectPart(a.id, true); speakPart(a.id); });
     labelsEl.appendChild(el);
     a.el = el; a.local = V3(a.p); a.occluded = false;
   });
@@ -1801,7 +1805,7 @@ function renderParts() {
       const nm = document.createElement('button'); nm.className = 'nm';
       const col = '#' + new THREE.Color(state.mode === 'real' && !P.internal ? P.real : P.did).getHexString();
       nm.innerHTML = `<i class="dot" style="background:${col}"></i><span>${P.name}</span>`;
-      nm.onclick = () => selectPart(P.id, true);
+      nm.onclick = () => { selectPart(P.id, true); speakPart(P.id); };
       const iso = document.createElement('button'); iso.className = 'ib' + (isolated === P.id ? ' on' : ''); iso.textContent = isolated === P.id ? 'Todo' : 'Solo';
       iso.title = 'Ver solo esta parte';
       iso.onclick = () => {
@@ -1982,7 +1986,7 @@ renderer.domElement.addEventListener('pointerup', e => {
   const pick = state.xray ? hits.find(h => !h.object.userData.isPeri) || hits[0] : hits[0];
   if (!pick) { clearSelection(); return; }
   if (state.tool === 'pin') addPin(pick);
-  selectPart(pick.object.userData.partId, false);
+  selectPart(pick.object.userData.partId, false); speakPart(pick.object.userData.partId);
 });
 
 // --- Herramientas ---
@@ -2037,6 +2041,62 @@ document.getElementById('b-beat').onclick = e => { state.beating = !state.beatin
 document.getElementById('b-slow').onclick = e => { state.slow = !state.slow; e.currentTarget.classList.toggle('on', state.slow); document.getElementById('slow-txt').textContent = state.slow ? 'Lento' : 'Normal'; };
 document.getElementById('b-rot').onclick = e => { controls.autoRotate = !controls.autoRotate; e.currentTarget.classList.toggle('on', controls.autoRotate); };
 document.getElementById('b-reset').onclick = () => view('front');
+// --- Vista limpia ---
+let cleanPrevLabels = true;
+document.getElementById('b-clean').onclick = e => {
+  const on = document.body.classList.toggle('clean');
+  const b = e.currentTarget; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+  if (on) { cleanPrevLabels = state.labels; state.labels = false; clearSelection(); }
+  else state.labels = cleanPrevLabels;
+  document.getElementById('t-labels').checked = state.labels;
+  resize();
+  showToast(on ? 'Vista limpia: toca «Limpia» otra vez para ver etiquetas y textos' : 'Etiquetas y textos visibles');
+};
+
+// --- Lectura en voz alta (voz del navegador, sin archivos de audio) ---
+const VOICE = { on: true, voice: null };
+try { VOICE.on = localStorage.getItem('corazon-voz') !== 'off'; } catch (e) {}
+function pickVoice() {
+  const vs = speechSynthesis.getVoices().filter(v => /^es/i.test(v.lang));
+  const pref = ['es-CR', 'es-MX', 'es-US', 'es-419', 'es-CO', 'es-ES'];
+  const rank = v => { const i = pref.indexOf(v.lang.replace('_', '-')); return i < 0 ? 99 : i; };
+  VOICE.voice = vs.sort((a, b) => rank(a) - rank(b) || (b.localService - a.localService))[0] || null;
+}
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function paintVoiceBtn() {
+  const b = document.getElementById('b-voice');
+  b.classList.toggle('on', VOICE.on); b.setAttribute('aria-pressed', VOICE.on);
+  b.querySelector('.w').style.display = VOICE.on ? '' : 'none';
+  b.querySelector('.x').style.display = VOICE.on ? 'none' : '';
+}
+function speakText(txt) {
+  if (!VOICE.on || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(txt.replace(/O₂/g, 'oxígeno').replace(/\s+/g, ' ').trim());
+  u.lang = VOICE.voice ? VOICE.voice.lang : 'es-ES';
+  if (VOICE.voice) u.voice = VOICE.voice;
+  u.rate = 0.95;
+  speechSynthesis.speak(u);
+}
+function quizRunning() {
+  const tab = document.getElementById('tab-quiz');
+  return tab.style.display !== 'none' && !!document.getElementById('q-opts') && !quiz.answered;
+}
+function speakPart(id) {
+  if (quizRunning()) return; // en la práctica no se dice la respuesta
+  const P = PART[id]; if (!P) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = P.fact || '';
+  speakText(P.name + '. ' + P.desc + ' ' + tmp.textContent);
+}
+document.getElementById('b-voice').onclick = () => {
+  VOICE.on = !VOICE.on;
+  try { localStorage.setItem('corazon-voz', VOICE.on ? 'on' : 'off'); } catch (e) {}
+  paintVoiceBtn();
+  if (!('speechSynthesis' in window)) { showToast('Este navegador no puede leer en voz alta'); return; }
+  if (!VOICE.on) speechSynthesis.cancel();
+  showToast(VOICE.on ? 'Voz activada: toca una parte o su etiqueta para escucharla' : 'Voz desactivada');
+};
+paintVoiceBtn();
 document.getElementById('b-theme').onclick = () => document.body.classList.toggle('light');
 document.getElementById('b-panel').onclick = () => { document.getElementById('panel').classList.toggle('hide'); document.body.classList.toggle('panel-hidden'); resize(); };
 document.querySelectorAll('#views .btn').forEach(b => b.onclick = () => view(b.dataset.view));
@@ -2060,7 +2120,7 @@ function showToast(m) {
 function resize() {
   const W = window.innerWidth, Hh = window.innerHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
   // desplaza el centro de la vista para que el panel derecho no tape el corazón
-  const P = (document.getElementById('panel').classList.contains('hide') || W < 860) ? 0 : 330;
+  const P = (document.getElementById('panel').classList.contains('hide') || document.body.classList.contains('clean') || W < 860) ? 0 : 330;
   // en pantallas angostas sube el corazón para que la tarjeta de abajo no lo tape
   const B = W < 860 ? Math.min(document.getElementById('info').offsetHeight + 16, Hh * 0.45) : 0;
   camera.aspect = (W + P) / (Hh + B);
